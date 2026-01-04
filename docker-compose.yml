@@ -1,0 +1,46 @@
+services:
+  # 1. MongoDB Database Service
+  database:
+    image: mongo:latest
+    container_name: mongodb_container
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: app_user
+      MONGO_INITDB_ROOT_PASSWORD: app_password
+    volumes:
+      - mongo_data:/data/db
+
+  # 2. Node.js Express Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: express_backend
+    ports:
+      - "3000:3000"           
+    environment:
+      MONGODB_URI: mongodb://app_user:app_password@database:27017/savings_helper_db
+    volumes:
+      - ./backend:/usr/src/app 
+      - /usr/src/app/node_modules 
+    depends_on:
+      - database
+
+  # 3. Vite Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: vite_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/usr/src/app  # Mount source code for HMR/live-reloading
+      - /usr/src/app/node_modules
+    environment:
+      VITE_API_BASE_URL: http://backend:3000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
