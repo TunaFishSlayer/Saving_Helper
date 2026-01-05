@@ -1,26 +1,21 @@
 import Transaction from "../models/Transaction.js";
-
+import Category from "../models/Category.js";
 class TransactionService {
 
-    /* =========================
-       CREATE
-    ========================== */
     static async createTransaction(userId, transactionData) {
-        if (!userId) {
-            throw new Error("User ID is required");
-        }
-
-        const transaction = new Transaction({
-            ...transactionData,
+        const category = await Category.findOne({
+            _id: transactionData.categoryId,
             userId
         });
-
-        return await transaction.save();
+        if (!category) {
+            throw new Error("Invalid category");
+        }
+        if (category.type !== transactionData.type) {
+            throw new Error("Transaction type does not match category type");
+        }
+    return Transaction.create({ ...transactionData, userId });
     }
-
-    /* =========================
-       READ – LIST (FILTER + SORT + PAGINATION)
-    ========================== */
+    
     static async getUserTransactions({
         userId,
         page = 1,
@@ -67,9 +62,7 @@ class TransactionService {
         };
     }
 
-    /* =========================
-       READ – SINGLE
-    ========================== */
+
     static async getTransactionById(transactionId, userId) {
         const transaction = await Transaction.findOne({
             _id: transactionId,
@@ -83,9 +76,7 @@ class TransactionService {
         return transaction;
     }
 
-    /* =========================
-       UPDATE
-    ========================== */
+    
     static async updateTransaction(transactionId, userId, updateData) {
         const transaction = await Transaction.findOneAndUpdate(
             { _id: transactionId, userId },
@@ -100,9 +91,7 @@ class TransactionService {
         return transaction;
     }
 
-    /* =========================
-       DELETE
-    ========================== */
+    
     static async deleteTransaction(transactionId, userId) {
         const transaction = await Transaction.findOneAndDelete({
             _id: transactionId,
@@ -116,10 +105,7 @@ class TransactionService {
         return transaction;
     }
 
-    /* =========================
-       ANALYTICS
-    ========================== */
-
+    
     // Total income or expense
     static async getTotalByType(userId, type) {
         const result = await Transaction.aggregate([

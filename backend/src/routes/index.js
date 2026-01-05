@@ -4,6 +4,8 @@ import AuthRoute from "./authRoute.js";
 import { version } from "mongoose";
 import { updatePassword } from "../controller/userController";
 import { requestResetPassword } from "../controller/authController.js";
+import CategoryRoute from "./categoryRoute.js";
+import TransactionRoute from "./transactionRoute.js";
 
 const router = express.Router();
 
@@ -33,5 +35,7 @@ router.get("/", (req, res) => {
 
 router.use("/api/users", UserRoute);
 router.use("/api/auth", AuthRoute);
+router.use("/api/categories", CategoryRoute);
+router.use("/api/transactions", TransactionRoute);
 
 export default router;
