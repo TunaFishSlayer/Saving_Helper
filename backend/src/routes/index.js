@@ -1,41 +1,53 @@
-import express, { request } from "express";
+// backend/src/routes/index.js
+import express from "express";
 import UserRoute from "./userRoute.js";
 import AuthRoute from "./authRoute.js";
-import { version } from "mongoose";
-import { updatePassword } from "../controller/userController";
-import { requestResetPassword } from "../controller/authController.js";
 import CategoryRoute from "./categoryRoute.js";
 import TransactionRoute from "./transactionRoute.js";
+import BudgetRoute from "./budgetRoute.js";
+import { apiLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ */
+
+// Health check endpoint
+router.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// API documentation endpoint
 router.get("/", (req, res) => {
   res.json({
     message: "Welcome to the Savings Helper API",
-    version: version,
-    endpoint : 
-    {
-        auth:
-        {
-            register:" POST /api/auth/register",
-            login: " POST /api/auth/login",
-            googleLogin: " POST /api/auth/google",
-            requestResetPassword: " POST /api/auth/request-reset-password",
-            resetPassword: " POST /api/auth/reset-password"
-        },
-        users:
-        {   
-            getProfile: "GET /api/users/me",
-            updateProfile: "PUT /api/users/me/update",
-            updatePassword: "PUT /api/users/me/updatePassword",
-            deleteAccount: "DELETE /api/users/me"
-        },
-    },});
-});    
+    version: "1.0.0",
+    links: {
+  docs: "/api-docs",
+  health: "/api/health"
+  }  });
+});
 
-router.use("/api/users", UserRoute);
-router.use("/api/auth", AuthRoute);
-router.use("/api/categories", CategoryRoute);
-router.use("/api/transactions", TransactionRoute);
+// Apply general rate limiting to all API routes
+router.use(apiLimiter);
+
+// Mount route modules
+router.use("/users", UserRoute);
+router.use("/auth", AuthRoute);
+router.use("/categories", CategoryRoute);
+router.use("/transactions", TransactionRoute);
+router.use("/budgets", BudgetRoute);
 
 export default router;

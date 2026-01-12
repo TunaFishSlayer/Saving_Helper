@@ -1,9 +1,6 @@
 import CategoryService from "../services/CategoryService.js";
 
-/* =========================
-   CREATE CATEGORY
-   POST /api/categories
-========================= */
+// POST /api/categories
 export const createCategory = async (req, res) => {
   try {
     const category = await CategoryService.createCategory(
@@ -20,10 +17,8 @@ export const createCategory = async (req, res) => {
   }
 };
 
-/* =========================
-   GET USER CATEGORIES
-   GET /api/categories
-========================= */
+// GET /api/categories
+
 export const getCategories = async (req, res) => {
   try {
     const categories = await CategoryService.getUserCategories(
@@ -37,10 +32,8 @@ export const getCategories = async (req, res) => {
   }
 };
 
-/* =========================
-   DELETE CATEGORY
-   DELETE /api/categories/:id
-========================= */
+// DELETE /api/categories/:id
+
 export const deleteCategory = async (req, res) => {
   try {
     await CategoryService.deleteCategory(
