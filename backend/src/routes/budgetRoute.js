@@ -224,7 +224,6 @@ router.patch("/:id/deactivate", deactivateBudget);
  *       404:
  *         description: Budget not found
  */
-
 router.get("/:id/status", getBudgetStatus);
 
 export default router;
