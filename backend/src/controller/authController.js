@@ -1,4 +1,4 @@
-import EmailService from "../services/emailService.js";
+import EmailService from "../services/EmailService.js";
 import logger from "../utils/logger.js";
 import { signToken } from "../utils/jwt.js";
 import { OAuth2Client } from 'google-auth-library';
