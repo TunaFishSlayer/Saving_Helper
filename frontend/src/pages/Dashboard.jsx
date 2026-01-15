@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
 import transactionService from '../services/transactionService';
 import budgetService from '../services/budgetService';
 import categoryService from '../services/categoryService';
-import { CHART_COLORS } from '../utils/constants';
+import { CHART_COLORS, formatCurrency } from '../utils/constants';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -87,7 +87,7 @@ const Dashboard = () => {
           <div className="stat-content">
             <div className="stat-info">
               <p className="stat-label">Total Income</p>
-              <p className="stat-value">${stats.income.toFixed(2)}</p>
+              <p className="stat-value">{formatCurrency(stats.income)}</p>
             </div>
             <div className="stat-icon">
               <TrendingUp size={48} />
@@ -99,7 +99,7 @@ const Dashboard = () => {
           <div className="stat-content">
             <div className="stat-info">
               <p className="stat-label">Total Expense</p>
-              <p className="stat-value">${stats.expense.toFixed(2)}</p>
+              <p className="stat-value">{formatCurrency(stats.expense)}</p>
             </div>
             <div className="stat-icon">
               <TrendingDown size={48} />
@@ -111,7 +111,7 @@ const Dashboard = () => {
           <div className="stat-content">
             <div className="stat-info">
               <p className="stat-label">Balance</p>
-              <p className="stat-value">${stats.balance.toFixed(2)}</p>
+              <p className="stat-value">{formatCurrency(stats.balance)}</p>
             </div>
             <div className="stat-icon">
               <Wallet size={48} />
@@ -152,13 +152,13 @@ const Dashboard = () => {
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={(entry) => `${entry.name}: $${entry.value.toFixed(2)}`}
+                  label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
                 >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -184,7 +184,7 @@ const Dashboard = () => {
                     </p>
                   </div>
                   <span className={`transaction-amount transaction-${transaction.type}`}>
-                    {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                    {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                   </span>
                 </div>
               ))}

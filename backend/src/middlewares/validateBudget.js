@@ -26,9 +26,9 @@ export const validateCreateBudget = (req, res, next) => {
   }
 
   // Validate period
-  if (!["monthly", "yearly"].includes(period)) {
+  if (!["monthly", "yearly", "weekly", "custom"].includes(period)) {
     return res.status(400).json({
-      message: "Period must be either 'monthly' or 'yearly'"
+      message: "Period must be 'monthly', 'yearly', 'weekly', or 'custom'"
     });
   }
 
@@ -85,9 +85,9 @@ export const validateUpdateBudget = (req, res, next) => {
   }
 
   // Validate period if provided
-  if (period && !["monthly", "yearly"].includes(period)) {
+  if (period && !["monthly", "yearly", "weekly", "custom"].includes(period)) {
     return res.status(400).json({
-      message: "Period must be either 'monthly' or 'yearly'"
+      message: "Period must be 'monthly', 'yearly', 'weekly', or 'custom'"
     });
   }
 

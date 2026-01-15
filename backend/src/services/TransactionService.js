@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Transaction from "../models/Transaction.js";
 import Category from "../models/Category.js";
 class TransactionService {
@@ -109,7 +110,12 @@ class TransactionService {
     // Total income or expense
     static async getTotalByType(userId, type) {
         const result = await Transaction.aggregate([
-            { $match: { userId, type } },
+            { 
+                $match: { 
+                    userId: new mongoose.Types.ObjectId(userId), 
+                    type 
+                } 
+            },
             {
                 $group: {
                     _id: null,
@@ -126,7 +132,7 @@ class TransactionService {
         return Transaction.aggregate([
             {
                 $match: {
-                    userId,
+                    userId: new mongoose.Types.ObjectId(userId),
                     date: {
                         $gte: new Date(year, month - 1, 1),
                         $lt: new Date(year, month, 1)
@@ -145,7 +151,12 @@ class TransactionService {
     // Expense by category (pie chart)
     static async getExpenseByCategory(userId) {
         return Transaction.aggregate([
-            { $match: { userId, type: "expense" } },
+            { 
+                $match: { 
+                    userId: new mongoose.Types.ObjectId(userId), // 2. Manually cast to ObjectId
+                    type: "expense" 
+                } 
+            },
             {
                 $group: {
                     _id: "$categoryId",

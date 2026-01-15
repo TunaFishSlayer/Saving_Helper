@@ -1,4 +1,5 @@
 // backend/src/services/BudgetService.js
+import mongoose from "mongoose";
 import Budget from "../models/Budget.js";
 import Category from "../models/Category.js";
 import Transaction from "../models/Transaction.js";
@@ -179,28 +180,38 @@ class BudgetService {
       throw new Error("Budget not found or access denied");
     }
 
-    // Calculate date range for spending calculation
     const now = new Date();
     let periodStart = new Date(budget.startDate);
+    // If no end date is set for custom, use 'now' to track up to the present moment
     let periodEnd = budget.endDate ? new Date(budget.endDate) : now;
 
-    // If monthly budget, calculate current month
-    if (budget.period === "monthly") {
+    // Override dates ONLY for standard periods
+    if (budget.period === "weekly") {
+      const dayOfWeek = now.getDay(); 
+      const daysSinceSunday = dayOfWeek;
+      periodStart = new Date(now);
+      periodStart.setDate(now.getDate() - daysSinceSunday);
+      periodStart.setHours(0, 0, 0, 0); // Normalize to start of day
+      
+      periodEnd = new Date(periodStart);
+      periodEnd.setDate(periodStart.getDate() + 6);
+      periodEnd.setHours(23, 59, 59, 999); // Normalize to end of day
+    } 
+    else if (budget.period === "monthly") {
       periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
       periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
-    // If yearly budget, calculate current year
+    } 
     else if (budget.period === "yearly") {
       periodStart = new Date(now.getFullYear(), 0, 1);
       periodEnd = new Date(now.getFullYear(), 11, 31);
     }
+    // else if (budget.period === "custom") { 
 
-    // Calculate total spending for the category in the period
     const spending = await Transaction.aggregate([
       {
         $match: {
-          userId: budget.userId,
-          categoryId: budget.categoryId,
+          userId: new mongoose.Types.ObjectId(userId), 
+          categoryId: new mongoose.Types.ObjectId(budget.categoryId._id), 
           type: "expense",
           date: {
             $gte: periodStart,

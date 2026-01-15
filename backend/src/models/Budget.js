@@ -19,7 +19,7 @@ const budgetSchema = new mongoose.Schema({
   },
   period: {
     type: String,
-    enum: ["monthly", "yearly"],
+    enum: ["custom", "weekly", "monthly", "yearly"],
     default: "monthly",
     required: true
   },
@@ -55,9 +55,8 @@ const budgetSchema = new mongoose.Schema({
 budgetSchema.index({ userId: 1, categoryId: 1, period: 1, isActive: 1 });
 
 // Update the updatedAt timestamp before saving
-budgetSchema.pre("save", function(next) {
+budgetSchema.pre("save", async function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 export default mongoose.model("Budget", budgetSchema);

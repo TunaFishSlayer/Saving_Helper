@@ -2,7 +2,7 @@
 
 import { createBrowserRouter } from 'react-router-dom';
 import Layout from './components/layout/Layout.jsx';
-import ProtectedRoute from './components/auth/ProtectedRoute.js';
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Transaction from './pages/Transaction.jsx';

@@ -54,6 +54,7 @@ class EmailService {
       logger.info(`Password reset email sent to ${email}: ${info.messageId}${previewUrl ? ` (preview: ${previewUrl})` : ''}`);
       return true;
     } catch (error) {
+      console.error("Nodemailer Error Details:", error);
       logger.error(`Failed to send password reset email: ${error.message}`);
       throw new Error('Failed to send password reset email');
     }

@@ -18,13 +18,25 @@ class ApiService {
         headers
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        // IMPROVED ERROR HANDLING:
+        // Try to parse the error as JSON to get the clean "message" property
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || JSON.stringify(errorData);
+        } catch (e) {
+          // If response isn't JSON, fallback to plain text
+          errorMessage = await response.text();
+        }
+        
+        throw new Error(errorMessage || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return data;
+      // Handle cases where response might be empty (like 204 No Content)
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
+
     } catch (error) {
       console.error('API Error:', error);
       throw error;
@@ -34,6 +46,7 @@ class ApiService {
   get(endpoint, options = {}) {
     return this.request(endpoint, { ...options, method: 'GET' });
   }
+
 
   post(endpoint, body, options = {}) {
     return this.request(endpoint, {

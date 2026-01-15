@@ -1,13 +1,18 @@
 // src/pages/Category.jsx
 
 import { useState, useEffect } from 'react';
-import { Plus, X, FolderOpen } from 'lucide-react';
+import { Plus, X, FolderOpen, Edit2 } from 'lucide-react'; // Added Edit2
 import categoryService from '../services/categoryService';
 import { CATEGORY_TYPES } from '../utils/constants';
 
 const Category = () => {
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  
+  // Edit Mode State
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentCategoryId, setCurrentCategoryId] = useState(null);
+
   const [formData, setFormData] = useState({
     name: '',
     type: 'expense',
@@ -34,17 +39,41 @@ const Category = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({ name: '', type: 'expense', description: '' });
+    setIsEditing(false);
+    setCurrentCategoryId(null);
+    setShowModal(false);
+    setError('');
+  };
+
+  const handleEdit = (category) => {
+    setFormData({
+      name: category.name,
+      type: category.type,
+      description: category.description || ''
+    });
+    setCurrentCategoryId(category._id);
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
-      await categoryService.createCategory(formData);
-      setShowModal(false);
-      setFormData({ name: '', type: 'expense', description: '' });
+      if (isEditing) {
+        // Assuming your service has an updateCategory method
+        await categoryService.updateCategory(currentCategoryId, formData);
+      } else {
+        await categoryService.createCategory(formData);
+      }
+      
+      resetForm();
       fetchCategories();
     } catch (err) {
-      setError(err.message || 'Failed to create category');
+      setError(err.message || `Failed to ${isEditing ? 'update' : 'create'} category`);
     }
   };
 
@@ -70,7 +99,10 @@ const Category = () => {
     <div className="categories-page">
       <div className="page-header">
         <h1 className="page-title">Categories</h1>
-        <button className="button button-primary" onClick={() => setShowModal(true)}>
+        <button 
+          className="button button-primary" 
+          onClick={() => { resetForm(); setShowModal(true); }}
+        >
           <Plus size={20} />
           Add Category
         </button>
@@ -110,12 +142,23 @@ const Category = () => {
                 <div className="category-icon">
                   <FolderOpen size={24} />
                 </div>
-                <button
-                  className="delete-button"
-                  onClick={() => handleDelete(category._id)}
-                >
-                  <X size={20} />
-                </button>
+                <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="edit-button"
+                    onClick={() => handleEdit(category)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}
+                    title="Edit Category"
+                  >
+                    <Edit2 size={20} />
+                  </button>
+                  <button
+                    className="delete-button"
+                    onClick={() => handleDelete(category._id)}
+                    title="Delete Category"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
               <h3 className="category-name">{category.name}</h3>
               <span className={`category-badge category-${category.type}`}>
@@ -137,13 +180,13 @@ const Category = () => {
         </div>
       )}
 
-      {/* Add Category Modal */}
+      {/* Add/Edit Category Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={resetForm}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add Category</h2>
-              <button className="close-button" onClick={() => setShowModal(false)}>
+              <h2>{isEditing ? 'Edit Category' : 'Add Category'}</h2>
+              <button className="close-button" onClick={resetForm}>
                 <X size={24} />
               </button>
             </div>
@@ -191,12 +234,12 @@ const Category = () => {
 
               <div className="button-group">
                 <button type="submit" className="button button-primary">
-                  Create Category
+                  {isEditing ? 'Update Category' : 'Create Category'}
                 </button>
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => setShowModal(false)}
+                  onClick={resetForm}
                 >
                   Cancel
                 </button>
