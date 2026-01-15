@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 export const validateCreateCategory = (req, res, next) => {
   const { name, type } = req.body;
 

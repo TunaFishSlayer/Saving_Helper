@@ -24,8 +24,9 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  /* Use normal document flow so the app occupies full width.
+     Previously `display:flex` plus `place-items:center` caused
+     the app to compress to a sidebar on the left. */
   min-width: 320px;
   min-height: 100vh;
 }

@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 export const validateUpdateProfile = (req, res, next) => {
   const { name } = req.body;
 
