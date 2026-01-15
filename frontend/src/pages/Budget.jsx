@@ -1,5 +1,5 @@
 // src/pages/Budget.jsx
-
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { Plus, X, Target, Edit2 } from 'lucide-react'; // Added Edit2 icon
 import budgetService from '../services/budgetService';
@@ -87,15 +87,19 @@ const Budget = () => {
 
       if (isEditing) {
         await budgetService.updateBudget(currentBudgetId, payload);
+        toast.success('Budget updated successfully!');
       } else {
         await budgetService.createBudget(payload);
+        toast.success('Budget created successfully!');
       }
 
       resetForm();
       fetchBudgets();
     } catch (err) {
-      setError(err.message || `Failed to ${isEditing ? 'update' : 'create'} budget`);
-    }
+      const msg = err.message || `Failed to ${isEditing ? 'update' : 'create'} budget`;
+      setError(msg);
+      toast.error(msg);
+      }
   };
 
   const resetForm = () => {
@@ -117,9 +121,12 @@ const Budget = () => {
 
     try {
       await budgetService.deleteBudget(id);
+      toast.success('Budget deleted successfully!');
       fetchBudgets();
     } catch (err) {
-      alert(err.message || 'Failed to delete budget');
+      const error = err.message || 'Failed to delete budget';
+      setError(error);
+      toast.error(error);
     }
   };
 

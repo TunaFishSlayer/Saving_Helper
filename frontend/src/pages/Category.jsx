@@ -1,10 +1,10 @@
 // src/pages/Category.jsx
-
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import { Plus, X, FolderOpen, Edit2 } from 'lucide-react'; // Added Edit2
+import { Plus, X, FolderOpen, Edit2 } from 'lucide-react'; 
 import categoryService from '../services/categoryService';
 import { CATEGORY_TYPES } from '../utils/constants';
-
+  
 const Category = () => {
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -64,16 +64,19 @@ const Category = () => {
 
     try {
       if (isEditing) {
-        // Assuming your service has an updateCategory method
         await categoryService.updateCategory(currentCategoryId, formData);
+        toast.success('Category updated successfully!');
       } else {
         await categoryService.createCategory(formData);
+        toast.success('Category created successfully!');
       }
       
       resetForm();
       fetchCategories();
     } catch (err) {
-      setError(err.message || `Failed to ${isEditing ? 'update' : 'create'} category`);
+      const msg = err.message || `Failed to ${isEditing ? 'update' : 'create'} category`;
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -82,9 +85,12 @@ const Category = () => {
 
     try {
       await categoryService.deleteCategory(id);
+      toast.success('Category deleted successfully!');
       fetchCategories();
     } catch (err) {
-      alert(err.message || 'Failed to delete category');
+      const error = err.message || 'Failed to delete category';
+      setError(error);
+      toast.error(error);
     }
   };
 

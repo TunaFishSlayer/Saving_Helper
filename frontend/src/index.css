@@ -379,18 +379,41 @@ html, body {
   gap: 0.5rem;
 }
 
-.form-group label {
-  font-weight: 500;
-  color: var(--text);
-}
-
-.input {
-  padding: 0.75rem 1rem;
+.input, 
+select.input {
+  box-sizing: border-box; 
+  width: 100%;
+  
+  padding: 10px 12px; 
+  
+  font-size: 14px;
+  line-height: 1.4; /* Standardizes text height inside the box */
+  
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  width: 100%;
+  background-color: #fff;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  
+  height: 42px; 
+}
+
+select.input {
+  padding-right: 32px !important; 
+  cursor: pointer;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #374151; /* Darker gray for better readability */
+  text-align: left;
+}
+
+.input-group select {
+  padding-right: 2.5rem;
 }
 
 .input:focus {
@@ -425,11 +448,16 @@ html, body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  
+  /* Flexbox Centering Magic */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  
   font-size: 1rem;
+  line-height: 1;      
+  min-height: 42px;    
 }
 
 .button:disabled {

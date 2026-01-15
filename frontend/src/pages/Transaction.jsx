@@ -1,10 +1,11 @@
 // src/pages/Transaction.jsx
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Filter, DollarSign, Edit2 } from 'lucide-react'; // Added Edit2
+import { Plus, X, Filter, DollarSign, Edit2 } from 'lucide-react'; 
 import transactionService from '../services/transactionService';
 import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/constants';
+import toast from 'react-hot-toast';
 
 const Transaction = () => {
   const [transactions, setTransactions] = useState([]);
@@ -103,14 +104,18 @@ const Transaction = () => {
 
       if (isEditing) {
         await transactionService.updateTransaction(currentTransactionId, payload);
+        toast.success('Transaction updated successfully!');
       } else {
         await transactionService.createTransaction(payload);
+        toast.success('Transaction added successfully!');
       }
       
       resetForm();
       fetchTransactions();
     } catch (err) {
-      setError(err.message || `Failed to ${isEditing ? 'update' : 'create'} transaction`);
+      const error = err.message || `Failed to ${isEditing ? 'update' : 'create'} transaction`;
+      setError(error);
+      toast.error(error);
     }
   };
 
@@ -119,9 +124,12 @@ const Transaction = () => {
 
     try {
       await transactionService.deleteTransaction(id);
+      toast.success('Transaction deleted successfully!');
       fetchTransactions();
     } catch (err) {
-      alert(err.message || 'Failed to delete transaction');
+      const error = err.message || 'Failed to delete transaction';
+      setError(error);
+      toast.error(error);
     }
   };
 

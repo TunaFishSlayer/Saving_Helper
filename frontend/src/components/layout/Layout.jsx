@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useState } from 'react';
+import { Toaster } from 'react-hot-toast'; // Already imported
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -14,6 +15,8 @@ const Layout = () => {
 
   return (
     <div className="layout">
+      <Toaster position="top-right" reverseOrder={false} />
+      
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-content">
         <Header onMenuClick={toggleSidebar} />
