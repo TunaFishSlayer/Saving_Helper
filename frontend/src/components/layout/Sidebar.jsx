@@ -9,7 +9,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/transactions', icon: DollarSign, label: 'Transaction' },
     { path: '/budgets', icon: Target, label: 'Budget' },
-    { path: '/categories', icon: FolderOpen, label: 'Category' }
+    { path: '/categories', icon: FolderOpen, label: 'Category' },
+    { path: '/budget-analytics', icon: Target, label: 'Budget Analytics' }
   ];
 
   return (

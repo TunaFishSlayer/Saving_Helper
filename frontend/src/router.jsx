@@ -9,6 +9,7 @@ import Transaction from './pages/Transaction.jsx';
 import Budget from './pages/Budget.jsx';
 import Category from './pages/Category.jsx';
 import Profile from './pages/Profile.jsx';
+import BudgetAnalytics from './pages/BudgetAnalytics.jsx';
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +43,12 @@ export const router = createBrowserRouter([
       {
         path: 'profile',
         element: <Profile />
+      },
+      {
+        path: 'budget-analytics',
+        element: <BudgetAnalytics />
       }
+
     ]
   },
   {

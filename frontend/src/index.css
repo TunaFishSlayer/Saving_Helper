@@ -1309,3 +1309,35 @@ select.input {
     grid-template-columns: 1fr;
   }
 }
+
+.budget-analytics-page {
+  padding: 0;
+}
+
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.chart-full {
+  width: 100%;
+}
+
+/* Warning badge */
+.badge-warning {
+  background: #fef3c7;
+  color: #78350f;
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .table {
+    min-width: 800px;
+  }
+}
