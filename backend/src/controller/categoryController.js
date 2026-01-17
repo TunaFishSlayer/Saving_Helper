@@ -48,3 +48,21 @@ export const deleteCategory = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+
+// PUT /api/categories/:id
+export const updateCategory = async (req, res) => {
+  try {
+    const category = await CategoryService.updateCategory(
+      req.params.id,
+      req.user.userId,
+      req.body
+    );
+    res.status(200).json({
+      message: "Category updated successfully",
+      data: category
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

@@ -97,4 +97,6 @@ router.get("/", getCategories);
  */
 router.delete("/:id", deleteCategory);
 
+
+router.put("/:id", validateCreateCategory, updateCategory);
 export default router;
