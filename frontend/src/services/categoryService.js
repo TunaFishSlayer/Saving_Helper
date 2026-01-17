@@ -15,6 +15,8 @@ class CategoryService {
   async deleteCategory(id) {
     return await api.delete(`/categories/${id}`);
   }
+  async updateCategory(id, categoryData) {
+    return await api.put(`/categories/${id}`, categoryData);
+  }
 }
-
 export default new CategoryService();
