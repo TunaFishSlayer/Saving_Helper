@@ -10,7 +10,8 @@ import express from "express";
 import {
   createCategory,
   getCategories,
-  deleteCategory
+  deleteCategory,
+  updateCategory
 } from "../controller/categoryController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { validateCreateCategory } from "../middlewares/validateCategory.js";
