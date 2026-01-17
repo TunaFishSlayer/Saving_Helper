@@ -10,7 +10,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/transactions', icon: DollarSign, label: 'Transaction' },
     { path: '/budgets', icon: Target, label: 'Budget' },
     { path: '/categories', icon: FolderOpen, label: 'Category' },
-    { path: '/budget-analytics', icon: ChartColumn, label: 'Budget Analytics' }
   ];
 
   return (
