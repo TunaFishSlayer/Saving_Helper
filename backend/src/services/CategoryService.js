@@ -40,6 +40,18 @@ class CategoryService {
 
     return category;
   }
-}
 
+  static async updateCategory(categoryId, userId, updateData) {
+    const category = await Category.findOne({
+      _id: categoryId,
+      userId
+    });
+    if (!category) {
+      throw new Error("Category not found or access denied");
+    }
+    Object.assign(category, updateData);
+    await category.save();
+    return category;
+  }
+}
 export default CategoryService;
