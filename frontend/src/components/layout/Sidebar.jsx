@@ -1,7 +1,7 @@
 // src/components/layout/Sidebar.jsx
 
 import { NavLink } from 'react-router-dom';
-import { Home, DollarSign, Target, FolderOpen, X } from 'lucide-react'; 
+import { Home, DollarSign, Target, FolderOpen, X, ChartColumn } from 'lucide-react'; 
 
 const Sidebar = ({ isOpen, onClose }) => {
 
@@ -10,7 +10,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/transactions', icon: DollarSign, label: 'Transaction' },
     { path: '/budgets', icon: Target, label: 'Budget' },
     { path: '/categories', icon: FolderOpen, label: 'Category' },
-    { path: '/budget-analytics', icon: Target, label: 'Budget Analytics' }
+    { path: '/budget-analytics', icon: ChartColumn, label: 'Budget Analytics' }
   ];
 
   return (
