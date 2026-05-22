@@ -53,10 +53,11 @@ const Category = () => {
       type: category.type,
       description: category.description || ''
     });
-    setCurrentCategoryId(category._id);
+    setCurrentCategoryId(category.id);
     setIsEditing(true);
     setShowModal(true);
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -143,8 +144,9 @@ const Category = () => {
       ) : (
         <div className="categories-grid">
           {filteredCategories.map((category) => (
-            <div key={category._id} className="category-card">
+            <div key={category.id} className="category-card">
               <div className="category-header">
+
                 <div className="category-icon">
                   <FolderOpen size={24} />
                 </div>
@@ -159,9 +161,10 @@ const Category = () => {
                   </button>
                   <button
                     className="delete-button"
-                    onClick={() => handleDelete(category._id)}
+                    onClick={() => handleDelete(category.id)}
                     title="Delete Category"
                   >
+
                     <X size={20} />
                   </button>
                 </div>

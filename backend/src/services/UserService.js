@@ -1,84 +1,124 @@
-import {hashPassword, comparePassword} from "../utils/hash.js";
-import User from "../models/User.js";
+import { hashPassword, comparePassword } from "../utils/hash.js";
+import { prisma } from "../config/db.js";
 import { generateResetToken, verifyResetCode } from "../utils/resetCodeGen.js";
 
 class UserService {
-    static async registerUser({email, password, name}) {
-        const existingUser = await User.findOne({email});
+
+    static async registerUser({ email, password, name }) {
+        const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
             throw new Error("Email already in use");
         }
 
         const passwordHash = await hashPassword(password);
-        const newUser = new User({email, passwordHash, name, provider: 'local'});
-        await newUser.save();
-        return newUser;
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                passwordHash,
+                name,
+                provider: 'local'
+            }
+        });
+        
+        const { passwordHash: ph, ...publicUser } = newUser;
+        return publicUser;
     }
 
-    static async loginLocal({email, password}) {
-        const user = await User.findOne({email}).select('-resetCode -resetCodeExpiry');
+    static async loginLocal({ email, password }) {
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
             throw new Error("Invalid email or password");
         }
-        if(user.provider !== 'local') {
+        if (user.provider !== 'local') {
             throw new Error("Please login using Google");
         }
         const isMatch = await comparePassword(password, user.passwordHash);
         if (!isMatch) {
             throw new Error("Invalid email or password");
         }
-        return user;
+        
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+        return publicUser;
     }
 
-    static async loginGoogle({email,name,googleId}) {
-        let user = await User.findOne({$or: [{email}, {googleId}]}).select('-resetCode -resetCodeExpiry');
+    static async loginGoogle({ email, name, googleId }) {
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    googleId ? { googleId } : {}
+                ]
+            }
+        });
+
         if (!user) {
-            user = new User({email, name, googleId, provider: 'google'});
-            await user.save();
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    name,
+                    googleId,
+                    provider: 'google'
+                }
+            });
         }
-        return user;
+        
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+        return publicUser;
     }
 
     static async getUserById(userId) {
-        const user = await User.findById(userId).select('-passwordHash -resetCode -resetCodeExpiry');
+        const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             throw new Error("User not found");
         }
-        return user;
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+        return publicUser;
     }
 
     static async getUserByEmail(email) {
-        const user = await User.findOne({email}).select('-passwordHash -resetCode -resetCodeExpiry');
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
             throw new Error("User not found");
         }
-        return user;
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+        return publicUser;
     }
 
     static async getAllUsers() {
-        const users = await User.find().select('-passwordHash -resetCode -resetCodeExpiry');
-        return users;
+        const users = await prisma.user.findMany();
+        return users.map(user => {
+            const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+            return publicUser;
+        });
     }
 
     static async deleteUser(userId) {
-        const user = await User.findByIdAndDelete(userId).select('-passwordHash -resetCode -resetCodeExpiry');
-        if (!user) {
+        try {
+            const user = await prisma.user.delete({ where: { id: userId } });
+            const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+            return publicUser;
+        } catch (e) {
             throw new Error("User not found");
         }
-        return user;
     }
 
     static async updateUser(userId, updateData) {
-        const user = await User.findByIdAndUpdate(userId, updateData, {new: true}).select('-passwordHash -resetCode -resetCodeExpiry');
-        if (!user) {
+        try {
+            const { id, ...safeData } = updateData;
+            const user = await prisma.user.update({
+                where: { id: userId },
+                data: safeData
+            });
+            const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
+            return publicUser;
+        } catch (e) {
             throw new Error("User not found");
         }
-        return user;
     }
 
     static async updatePassword(userId, oldPassword, newPassword) {
-        const user = await User.findById(userId).select('-resetCode -resetCodeExpiry');
-        if(!user) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
             throw new Error("User not found");
         }
         const isMatch = await comparePassword(oldPassword, user.passwordHash);
@@ -86,44 +126,60 @@ class UserService {
             throw new Error("Old password is incorrect");
         }
         const newHashedPassword = await hashPassword(newPassword);
-        user.passwordHash = newHashedPassword;
-        await user.save();
-        return user;
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: newHashedPassword }
+        });
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = updatedUser;
+        return publicUser;
     }
 
     static async requestResetPassword(email) {
-        const user = await User.findOne({email}).select('-passwordHash -resetCode');
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
             return null;
         }
         const token = generateResetToken();
-        user.resetCode = token.code;
-        user.resetCodeExpiry = token.expiresAt;
-        await user.save();
-        return user.resetCode;
+        const updatedUser = await prisma.user.update({
+            where: { email },
+            data: {
+                resetCode: token.code,
+                resetCodeExpiry: token.expiresAt
+            }
+        });
+        return updatedUser.resetCode;
     }
 
     static async resetPassword(email, code, newPassword) {
-        const user = await User.findOne({email}).select('-passwordHash');
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
             throw new Error("User not found");
         }
         const verification = verifyResetCode(code, user.resetCode, user.resetCodeExpiry);
         if (!verification.valid) {
             if (verification.reason === 'expired') {
-                user.resetCode = null;
-                user.resetCodeExpiry = null;
-                await user.save();
+                await prisma.user.update({
+                    where: { email },
+                    data: {
+                        resetCode: null,
+                        resetCodeExpiry: null
+                    }
+                });
                 throw new Error("Reset code has expired");
             }
             throw new Error("Invalid reset code");
         }
         const newHashedPassword = await hashPassword(newPassword);
-        user.passwordHash = newHashedPassword;
-        user.resetCode = null;
-        user.resetCodeExpiry = null;
-        await user.save();
-        return user;
+        const updatedUser = await prisma.user.update({
+            where: { email },
+            data: {
+                passwordHash: newHashedPassword,
+                resetCode: null,
+                resetCodeExpiry: null
+            }
+        });
+        const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = updatedUser;
+        return publicUser;
     }
 }
 

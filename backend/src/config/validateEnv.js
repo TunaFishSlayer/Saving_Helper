@@ -2,7 +2,8 @@ import logger from "../utils/logger.js";
 
 export const validateEnv = () => {
   const required = [
-    'MONGO_URI',
+    'DATABASE_URL',
+
     'JWT_SECRET',
     'PORT',
     'EMAIL_USER',

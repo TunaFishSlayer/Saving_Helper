@@ -10,6 +10,7 @@ import Budget from './pages/Budget.jsx';
 import Category from './pages/Category.jsx';
 import Profile from './pages/Profile.jsx';
 import BudgetAnalytics from './pages/BudgetAnalytics.jsx';
+import NotFound from './pages/NotFound.jsx';
 
 export const router = createBrowserRouter([
   {
@@ -53,12 +54,6 @@ export const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: (
-      <div className="not-found">
-        <h1>404 - Page Not Found</h1>
-        <p>The page you're looking for doesn't exist.</p>
-        <a href="/">Go to Dashboard</a>
-      </div>
-    )
+    element: <NotFound />
   }
 ]);

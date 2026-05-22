@@ -1,26 +1,38 @@
-import Category from "../models/Category.js";
-import Transaction from "../models/Transaction.js";
+import { prisma } from "../config/db.js";
 
 class CategoryService {
 
   static async createCategory(userId, data) {
-    return Category.create({
-      ...data,
-      userId
+    // Ensure proper type handling for nested update/create
+    return prisma.category.create({
+      data: {
+        ...data,
+        userId
+      }
     });
   }
 
   static async getUserCategories(userId, type) {
-    const query = { userId };
-    if (type) query.type = type;
+    const where = { userId };
+    if (type) {
+      where.type = type;
+    }
 
-    return Category.find(query).sort({ name: 1 });
+    return prisma.category.findMany({
+      where,
+      orderBy: {
+        name: 'asc'
+      }
+    });
   }
 
   static async deleteCategory(categoryId, userId) {
-    const transactionCount = await Transaction.countDocuments({
-      categoryId,
-      userId
+    // Use Postgres relations to count transactions linked to this category
+    const transactionCount = await prisma.transaction.count({
+      where: {
+        categoryId,
+        userId
+      }
     });
 
     if (transactionCount > 0) {
@@ -29,29 +41,51 @@ class CategoryService {
       );
     }
 
-    const category = await Category.findOneAndDelete({
-      _id: categoryId,
-      userId
+    // First, verify existence and user ownership
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      }
     });
 
     if (!category) {
       throw new Error("Category not found or access denied");
     }
+
+    // Perform deletion
+    await prisma.category.delete({
+      where: {
+        id: categoryId
+      }
+    });
 
     return category;
   }
 
   static async updateCategory(categoryId, userId, updateData) {
-    const category = await Category.findOne({
-      _id: categoryId,
-      userId
+    // Check ownership
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      }
     });
+    
     if (!category) {
       throw new Error("Category not found or access denied");
     }
-    Object.assign(category, updateData);
-    await category.save();
-    return category;
+
+    // Apply updates safely
+    const { id, userId: uId, ...safeUpdateData } = updateData;
+    
+    return prisma.category.update({
+      where: {
+        id: categoryId
+      },
+      data: safeUpdateData
+    });
   }
 }
+
 export default CategoryService;

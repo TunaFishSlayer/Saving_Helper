@@ -1,0 +1,16 @@
+/* Budget Analytics page */
+.budget-analytics-page {
+  padding: 0;
+}
+
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chart-full {
+  width: 100%;
+}

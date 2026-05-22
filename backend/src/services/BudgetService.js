@@ -1,19 +1,32 @@
-// backend/src/services/BudgetService.js
-import mongoose from "mongoose";
-import Budget from "../models/Budget.js";
-import Category from "../models/Category.js";
-import Transaction from "../models/Transaction.js";
+import { prisma } from "../config/db.js";
 
 class BudgetService {
   
+  // Helper to format Prisma results to match Mongoose population structure
+  static _formatBudget(budget) {
+    if (!budget) return null;
+    const formatted = { ...budget };
+    
+    if (budget.category) {
+      formatted.categoryId = {
+        ...budget.category
+      };
+      delete formatted.category;
+    }
+    
+    return formatted;
+  }
+
   // Create a new budget
   static async createBudget(userId, budgetData) {
     const { categoryId, amount, period, startDate, endDate, alertThreshold } = budgetData;
 
     // Verify category exists and belongs to user
-    const category = await Category.findOne({
-      _id: categoryId,
-      userId
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId
+      }
     });
 
     if (!category) {
@@ -26,11 +39,13 @@ class BudgetService {
     }
 
     // Check if active budget already exists for this category and period
-    const existingBudget = await Budget.findOne({
-      userId,
-      categoryId,
-      period,
-      isActive: true
+    const existingBudget = await prisma.budget.findFirst({
+      where: {
+        userId,
+        categoryId,
+        period,
+        isActive: true
+      }
     });
 
     if (existingBudget) {
@@ -46,15 +61,17 @@ class BudgetService {
       }
     }
 
-    const budget = await Budget.create({
-      userId,
-      categoryId,
-      amount,
-      period,
-      startDate: start,
-      endDate: endDate ? new Date(endDate) : null,
-      alertThreshold: alertThreshold || 80,
-      isActive: true
+    const budget = await prisma.budget.create({
+      data: {
+        userId,
+        categoryId,
+        amount: parseFloat(amount),
+        period,
+        startDate: start,
+        endDate: endDate ? new Date(endDate) : null,
+        alertThreshold: alertThreshold ? parseFloat(alertThreshold) : 80,
+        isActive: true
+      }
     });
 
     return budget;
@@ -64,38 +81,66 @@ class BudgetService {
   static async getUserBudgets(userId, options = {}) {
     const { period, isActive, categoryId } = options;
 
-    const query = { userId };
+    const where = { userId };
     
-    if (period) query.period = period;
-    if (typeof isActive !== 'undefined') query.isActive = isActive;
-    if (categoryId) query.categoryId = categoryId;
+    if (period) where.period = period;
+    if (typeof isActive !== 'undefined') {
+      where.isActive = isActive === 'true' || isActive === true;
+    }
+    if (categoryId) where.categoryId = categoryId;
 
-    const budgets = await Budget.find(query)
-      .populate('categoryId', 'name type')
-      .sort({ createdAt: -1 });
+    const budgets = await prisma.budget.findMany({
+      where,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
 
-    return budgets;
+    return budgets.map(this._formatBudget);
   }
 
   // Get budget by ID
   static async getBudgetById(budgetId, userId) {
-    const budget = await Budget.findOne({
-      _id: budgetId,
-      userId
-    }).populate('categoryId', 'name type');
+    const budget = await prisma.budget.findFirst({
+      where: {
+        id: budgetId,
+        userId
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true
+          }
+        }
+      }
+    });
 
     if (!budget) {
       throw new Error("Budget not found or access denied");
     }
 
-    return budget;
+    return this._formatBudget(budget);
   }
 
   // Update budget
   static async updateBudget(budgetId, userId, updateData) {
-    const budget = await Budget.findOne({
-      _id: budgetId,
-      userId
+    // Verify ownership
+    const budget = await prisma.budget.findFirst({
+      where: {
+        id: budgetId,
+        userId
+      }
     });
 
     if (!budget) {
@@ -104,9 +149,11 @@ class BudgetService {
 
     // Validate category if being updated
     if (updateData.categoryId) {
-      const category = await Category.findOne({
-        _id: updateData.categoryId,
-        userId
+      const category = await prisma.category.findFirst({
+        where: {
+          id: updateData.categoryId,
+          userId
+        }
       });
 
       if (!category) {
@@ -128,106 +175,133 @@ class BudgetService {
       }
     }
 
-    // Update fields
-    Object.keys(updateData).forEach(key => {
-      budget[key] = updateData[key];
+    const { id, userId: uId, ...safeUpdateData } = updateData;
+    
+    // Cast explicit data types safely
+    if (safeUpdateData.amount) safeUpdateData.amount = parseFloat(safeUpdateData.amount);
+    if (safeUpdateData.alertThreshold) safeUpdateData.alertThreshold = parseFloat(safeUpdateData.alertThreshold);
+    if (safeUpdateData.startDate) safeUpdateData.startDate = new Date(safeUpdateData.startDate);
+    if (safeUpdateData.endDate) safeUpdateData.endDate = new Date(safeUpdateData.endDate);
+
+    // Run update
+    return prisma.budget.update({
+      where: {
+        id: budgetId
+      },
+      data: safeUpdateData
     });
-
-    await budget.save();
-
-    return budget;
   }
 
   // Delete budget
   static async deleteBudget(budgetId, userId) {
-    const budget = await Budget.findOneAndDelete({
-      _id: budgetId,
-      userId
+    // Verify ownership first
+    const budget = await prisma.budget.findFirst({
+      where: {
+        id: budgetId,
+        userId
+      }
     });
 
     if (!budget) {
       throw new Error("Budget not found or access denied");
     }
 
-    return budget;
+    return prisma.budget.delete({
+      where: {
+        id: budgetId
+      }
+    });
   }
 
   // Deactivate budget (soft delete)
   static async deactivateBudget(budgetId, userId) {
-    const budget = await Budget.findOne({
-      _id: budgetId,
-      userId
+    const budget = await prisma.budget.findFirst({
+      where: {
+        id: budgetId,
+        userId
+      }
     });
 
     if (!budget) {
       throw new Error("Budget not found or access denied");
     }
 
-    budget.isActive = false;
-    await budget.save();
-
-    return budget;
+    return prisma.budget.update({
+      where: {
+        id: budgetId
+      },
+      data: {
+        isActive: false
+      }
+    });
   }
 
   // Get budget status with spending information
   static async getBudgetStatus(budgetId, userId) {
-    const budget = await Budget.findOne({
-      _id: budgetId,
-      userId
-    }).populate('categoryId', 'name type');
+    // Load full budget with category info
+    const rawBudget = await prisma.budget.findFirst({
+      where: {
+        id: budgetId,
+        userId
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true
+          }
+        }
+      }
+    });
 
-    if (!budget) {
+    if (!rawBudget) {
       throw new Error("Budget not found or access denied");
     }
 
+    const budget = this._formatBudget(rawBudget);
     const now = new Date();
     let periodStart = new Date(budget.startDate);
-    // If no end date is set for custom, use 'now' to track up to the present moment
     let periodEnd = budget.endDate ? new Date(budget.endDate) : now;
 
-    // Override dates ONLY for standard periods
+    // Standard logic to override start/end boundings by period type
     if (budget.period === "weekly") {
       const dayOfWeek = now.getDay(); 
       const daysSinceSunday = dayOfWeek;
       periodStart = new Date(now);
       periodStart.setDate(now.getDate() - daysSinceSunday);
-      periodStart.setHours(0, 0, 0, 0); // Normalize to start of day
+      periodStart.setHours(0, 0, 0, 0);
       
       periodEnd = new Date(periodStart);
       periodEnd.setDate(periodStart.getDate() + 6);
-      periodEnd.setHours(23, 59, 59, 999); // Normalize to end of day
+      periodEnd.setHours(23, 59, 59, 999);
     } 
     else if (budget.period === "monthly") {
       periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     } 
     else if (budget.period === "yearly") {
       periodStart = new Date(now.getFullYear(), 0, 1);
-      periodEnd = new Date(now.getFullYear(), 11, 31);
+      periodEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     }
-    // else if (budget.period === "custom") { 
 
-    const spending = await Transaction.aggregate([
-      {
-        $match: {
-          userId: new mongoose.Types.ObjectId(userId), 
-          categoryId: new mongoose.Types.ObjectId(budget.categoryId._id), 
-          type: "expense",
-          date: {
-            $gte: periodStart,
-            $lte: periodEnd
-          }
-        }
+    // Calculate total expense in range using relational Prisma aggregates
+    const spendingResult = await prisma.transaction.aggregate({
+      _sum: {
+        amount: true
       },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amount" }
+      where: {
+        userId,
+        categoryId: budget.categoryId.id,
+        type: "expense",
+        date: {
+          gte: periodStart,
+          lte: periodEnd
         }
       }
-    ]);
+    });
 
-    const totalSpent = spending[0]?.total || 0;
+    const totalSpent = spendingResult._sum.amount || 0;
     const remaining = budget.amount - totalSpent;
     const percentageUsed = (totalSpent / budget.amount) * 100;
     const isOverBudget = totalSpent > budget.amount;
@@ -235,8 +309,8 @@ class BudgetService {
 
     return {
       budget: {
-        id: budget._id,
-        categoryId: budget.categoryId._id,
+        id: budget.id,
+        categoryId: budget.categoryId.id,
         categoryName: budget.categoryId.name,
         amount: budget.amount,
         period: budget.period,
@@ -260,16 +334,21 @@ class BudgetService {
 
   // Get overview of all budgets with their statuses
   static async getBudgetOverview(userId, period) {
-    const query = { userId, isActive: true };
-    if (period) query.period = period;
+    const where = { userId, isActive: true };
+    if (period) where.period = period;
 
-    const budgets = await Budget.find(query).populate('categoryId', 'name type');
+    const budgets = await prisma.budget.findMany({
+      where,
+      select: {
+        id: true
+      }
+    });
 
+    // Collect statuses sequential (or parallelized since single SQL pool supports concurrently)
     const budgetStatuses = await Promise.all(
-      budgets.map(budget => this.getBudgetStatus(budget._id, userId))
+      budgets.map(budget => this.getBudgetStatus(budget.id, userId))
     );
 
-    // Calculate summary statistics
     const summary = {
       totalBudgets: budgetStatuses.length,
       totalBudgeted: budgetStatuses.reduce((sum, b) => sum + b.budget.amount, 0),
@@ -286,30 +365,36 @@ class BudgetService {
 
   // Check if any budget alerts should be triggered
   static async checkBudgetAlerts(userId) {
-    const activeBudgets = await Budget.find({
-      userId,
-      isActive: true
+    const activeBudgets = await prisma.budget.findMany({
+      where: {
+        userId,
+        isActive: true
+      },
+      select: {
+        id: true,
+        period: true
+      }
     });
 
     const alerts = [];
 
     for (const budget of activeBudgets) {
-      const status = await this.getBudgetStatus(budget._id, userId);
+      const status = await this.getBudgetStatus(budget.id, userId);
       
       if (status.spending.isOverBudget) {
         alerts.push({
           type: 'over_budget',
           severity: 'high',
-          budgetId: budget._id,
+          budgetId: budget.id,
           categoryName: status.budget.categoryName,
-          message: `You have exceeded your ${budget.period} budget for ${status.budget.categoryName} by ${status.spending.overBudgetAmount.toFixed(2)}`,
+          message: `You have exceeded your ${budget.period} budget for ${status.budget.categoryName} by ${parseFloat(status.spending.overBudgetAmount).toFixed(2)}`,
           data: status
         });
       } else if (status.spending.isNearLimit) {
         alerts.push({
           type: 'near_limit',
           severity: 'medium',
-          budgetId: budget._id,
+          budgetId: budget.id,
           categoryName: status.budget.categoryName,
           message: `You have used ${status.spending.percentageUsed}% of your ${budget.period} budget for ${status.budget.categoryName}`,
           data: status

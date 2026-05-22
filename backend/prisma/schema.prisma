@@ -1,0 +1,96 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+enum BudgetPeriod {
+  custom
+  weekly
+  monthly
+  yearly
+}
+
+enum AuthProvider {
+  local
+  google
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  passwordHash     String?
+  name             String
+  googleId         String?
+  provider         AuthProvider   @default(local)
+  resetCode        String?
+  resetCodeExpiry  DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  categories       Category[]
+  transactions     Transaction[]
+  budgets          Budget[]
+}
+
+model Category {
+  id          String          @id @default(uuid())
+  name        String
+  type        TransactionType
+  description String?
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  amount      Float
+  description String?
+  type        TransactionType
+  date        DateTime
+  createdAt   DateTime        @default(now())
+
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, categoryId])
+}
+
+model Budget {
+  id             String       @id @default(uuid())
+  amount         Float
+  period         BudgetPeriod @default(monthly)
+  startDate      DateTime
+  endDate        DateTime?
+  alertThreshold Float        @default(80)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  categoryId     String
+  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, categoryId, period, isActive])
+}

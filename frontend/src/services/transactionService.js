@@ -45,6 +45,18 @@ class TransactionService {
   async getExpenseByCategory() {
     return await api.get('/transactions/summary/category');
   }
+
+  async scanReceipt(file) {
+    const formData = new FormData();
+    // Field 'receipt' aligns with Express backend upload.single('receipt')
+    formData.append('receipt', file);
+    return await api.post('/transactions/scan-receipt', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
 }
+
 
 export default new TransactionService();

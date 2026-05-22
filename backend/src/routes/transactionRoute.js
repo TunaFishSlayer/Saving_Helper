@@ -8,9 +8,21 @@ import {
   deleteTransaction,
   getTotalByType,
   getMonthlySummary,
-  getExpenseByCategory
+  getExpenseByCategory,
+  scanReceipt
 } from "../controller/transactionController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
+import multer from "multer";
+import fs from "fs";
+
+// Ensure standard upload directory exists
+const uploadDir = "uploads/";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const upload = multer({ dest: uploadDir });
+
 import {
   validateCreateTransaction,
   validateUpdateTransaction
@@ -260,5 +272,32 @@ router.put("/:id", validateUpdateTransaction, updateTransaction);
  *         description: Transaction not found
  */
 router.delete("/:id", deleteTransaction);
+
+/**
+ * @swagger
+ * /api/transactions/scan-receipt:
+ *   post:
+ *     summary: Scan a receipt image and get structured JSON
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               receipt:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Successfully scanned receipt
+ *       400:
+ *         description: No file uploaded
+ *       500:
+ *         description: Internal server error during OCR
+ */
+router.post("/scan-receipt", upload.single("receipt"), scanReceipt);
 
 export default router;

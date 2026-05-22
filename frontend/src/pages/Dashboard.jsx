@@ -56,12 +56,13 @@ const Dashboard = () => {
 
       // Map category IDs to names for the chart
       const mappedCategoryData = (categoryRes || []).map(item => {
-        const category = categoriesRes.find(cat => cat._id === item._id);
+        const category = categoriesRes.find(cat => cat.id === item.id);
         return {
           name: category?.name || 'Unknown',
           value: item.total
         };
       });
+
       setCategoryData(mappedCategoryData);
 
       // Generate trend data for last 6 months
@@ -75,9 +76,10 @@ const Dashboard = () => {
       );
       
       const monthly = monthlyRes.map(item => ({
-        name: item._id === 'income' ? 'Income' : 'Expense',
+        name: item.id === 'income' ? 'Income' : 'Expense',
         amount: item.total
       }));
+
       setMonthlyData(monthly);
 
     } catch (error) {
@@ -110,8 +112,9 @@ const Dashboard = () => {
           monthData.month
         );
 
-        const income = summary.find(s => s._id === 'income')?.total || 0;
-        const expense = summary.find(s => s._id === 'expense')?.total || 0;
+        const income = summary.find(s => s.id === 'income')?.total || 0;
+        const expense = summary.find(s => s.id === 'expense')?.total || 0;
+
 
         trend.push({
           month: monthData.label,
@@ -132,9 +135,10 @@ const Dashboard = () => {
   };
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat._id === categoryId);
+    const category = categories.find(cat => cat.id === categoryId);
     return category?.name || 'Unknown';
   };
+
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -332,8 +336,9 @@ const Dashboard = () => {
         {recentTransactions.length > 0 ? (
           <div className="transactions-list">
             {recentTransactions.map((transaction) => (
-              <div key={transaction._id} className="transaction-item">
+              <div key={transaction.id} className="transaction-item">
                 <div className="transaction-info">
+
                   <p className="transaction-description">
                     {transaction.description || getCategoryName(transaction.categoryId)}
                   </p>

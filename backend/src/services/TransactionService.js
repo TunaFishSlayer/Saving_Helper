@@ -1,20 +1,31 @@
-import mongoose from "mongoose";
-import Transaction from "../models/Transaction.js";
-import Category from "../models/Category.js";
+import { prisma } from "../config/db.js";
+
 class TransactionService {
 
     static async createTransaction(userId, transactionData) {
-        const category = await Category.findOne({
-            _id: transactionData.categoryId,
-            userId
+        // Verify category and user ownership
+        const category = await prisma.category.findFirst({
+            where: {
+                id: transactionData.categoryId,
+                userId
+            }
         });
+
         if (!category) {
             throw new Error("Invalid category");
         }
         if (category.type !== transactionData.type) {
             throw new Error("Transaction type does not match category type");
         }
-    return Transaction.create({ ...transactionData, userId });
+
+        // Explicitly cast date safely
+        return prisma.transaction.create({
+            data: {
+                ...transactionData,
+                userId,
+                date: new Date(transactionData.date)
+            }
+        });
     }
     
     static async getUserTransactions({
@@ -32,42 +43,50 @@ class TransactionService {
             throw new Error("User ID is required");
         }
 
-        const query = { userId };
+        const where = { userId };
 
-        if (type) query.type = type;
-        if (categoryId) query.categoryId = categoryId;
+        if (type) where.type = type;
+        if (categoryId) where.categoryId = categoryId;
 
         if (startDate || endDate) {
-            query.date = {};
-            if (startDate) query.date.$gte = new Date(startDate);
-            if (endDate) query.date.$lte = new Date(endDate);
+            where.date = {};
+            if (startDate) where.date.gte = new Date(startDate);
+            if (endDate) where.date.lte = new Date(endDate);
         }
 
-        const sortOrder = order === "asc" ? 1 : -1;
+        const parsedLimit = parseInt(limit);
+        const parsedPage = parseInt(page);
 
-        const transactions = await Transaction.find(query)
-            .sort({ [sortBy]: sortOrder })
-            .skip((page - 1) * limit)
-            .limit(limit);
+        // Query database
+        const transactions = await prisma.transaction.findMany({
+            where,
+            orderBy: {
+                [sortBy]: order // Prisma natively accepts "asc" | "desc"
+            },
+            skip: (parsedPage - 1) * parsedLimit,
+            take: parsedLimit
+        });
 
-        const total = await Transaction.countDocuments(query);
+        const total = await prisma.transaction.count({ where });
 
         return {
             data: transactions,
             pagination: {
-                page,
-                limit,
+                page: parsedPage,
+                limit: parsedLimit,
                 total,
-                totalPages: Math.ceil(total / limit)
+                totalPages: Math.ceil(total / parsedLimit)
             }
         };
     }
 
 
     static async getTransactionById(transactionId, userId) {
-        const transaction = await Transaction.findOne({
-            _id: transactionId,
-            userId
+        const transaction = await prisma.transaction.findFirst({
+            where: {
+                id: transactionId,
+                userId
+            }
         });
 
         if (!transaction) {
@@ -79,29 +98,50 @@ class TransactionService {
 
     
     static async updateTransaction(transactionId, userId, updateData) {
-        const transaction = await Transaction.findOneAndUpdate(
-            { _id: transactionId, userId },
-            updateData,
-            { new: true }
-        );
-
-        if (!transaction) {
-            throw new Error("Transaction not found or access denied");
-        }
-
-        return transaction;
-    }
-
-    
-    static async deleteTransaction(transactionId, userId) {
-        const transaction = await Transaction.findOneAndDelete({
-            _id: transactionId,
-            userId
+        // Verify existence/ownership
+        const transaction = await prisma.transaction.findFirst({
+            where: {
+                id: transactionId,
+                userId
+            }
         });
 
         if (!transaction) {
             throw new Error("Transaction not found or access denied");
         }
+
+        const { id, userId: uId, ...safeUpdateData } = updateData;
+        if (safeUpdateData.date) {
+            safeUpdateData.date = new Date(safeUpdateData.date);
+        }
+
+        // Apply atomic updates
+        return prisma.transaction.update({
+            where: {
+                id: transactionId
+            },
+            data: safeUpdateData
+        });
+    }
+
+    
+    static async deleteTransaction(transactionId, userId) {
+        const transaction = await prisma.transaction.findFirst({
+            where: {
+                id: transactionId,
+                userId
+            }
+        });
+
+        if (!transaction) {
+            throw new Error("Transaction not found or access denied");
+        }
+
+        await prisma.transaction.delete({
+            where: {
+                id: transactionId
+            }
+        });
 
         return transaction;
     }
@@ -109,61 +149,62 @@ class TransactionService {
     
     // Total income or expense
     static async getTotalByType(userId, type) {
-        const result = await Transaction.aggregate([
-            { 
-                $match: { 
-                    userId: new mongoose.Types.ObjectId(userId), 
-                    type 
-                } 
+        const result = await prisma.transaction.aggregate({
+            _sum: {
+                amount: true
             },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: "$amount" }
-                }
+            where: {
+                userId,
+                type
             }
-        ]);
+        });
 
-        return result[0]?.total || 0;
+        return result._sum.amount || 0;
     }
 
     // Monthly income vs expense
     static async getMonthlySummary(userId, year, month) {
-        return Transaction.aggregate([
-            {
-                $match: {
-                    userId: new mongoose.Types.ObjectId(userId),
-                    date: {
-                        $gte: new Date(year, month - 1, 1),
-                        $lt: new Date(year, month, 1)
-                    }
-                }
+        const groups = await prisma.transaction.groupBy({
+            by: ['type'],
+            _sum: {
+                amount: true
             },
-            {
-                $group: {
-                    _id: "$type",
-                    total: { $sum: "$amount" }
+            where: {
+                userId,
+                date: {
+                    gte: new Date(year, month - 1, 1),
+                    lt: new Date(year, month, 1)
                 }
             }
-        ]);
+        });
+
+        // Map the results to match the Mongoose aggregator format for client stability
+        return groups.map(group => ({
+            id: group.type,
+            total: group._sum.amount || 0
+        }));
+
     }
 
     // Expense by category (pie chart)
     static async getExpenseByCategory(userId) {
-        return Transaction.aggregate([
-            { 
-                $match: { 
-                    userId: new mongoose.Types.ObjectId(userId), // 2. Manually cast to ObjectId
-                    type: "expense" 
-                } 
+        const groups = await prisma.transaction.groupBy({
+            by: ['categoryId'],
+            _sum: {
+                amount: true
             },
-            {
-                $group: {
-                    _id: "$categoryId",
-                    total: { $sum: "$amount" }
-                }
+            where: {
+                userId,
+                type: "expense"
             }
-        ]);
+        });
+
+        // Map the results to match Mongoose aggregator formats (_id: categoryId)
+        return groups.map(group => ({
+            id: group.categoryId,
+            total: group._sum.amount || 0
+        }));
+
     }
 }
 

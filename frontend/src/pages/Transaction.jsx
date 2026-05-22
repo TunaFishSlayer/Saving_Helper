@@ -1,7 +1,7 @@
 // src/pages/Transaction.jsx
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Filter, DollarSign, Edit2 } from 'lucide-react'; 
+import { Plus, X, Filter, DollarSign, Edit2, Camera, Loader } from 'lucide-react'; 
 import transactionService from '../services/transactionService';
 import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/constants';
@@ -13,6 +13,7 @@ const Transaction = () => {
   const [showModal, setShowModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
@@ -64,6 +65,61 @@ const Transaction = () => {
     }
   };
 
+  const handleFileScan = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setError('');
+    // Show a loading state in user toast notification
+    const toastId = toast.loading('AI is reading your receipt... (takes about 2-4 seconds)');
+    setScanning(true);
+
+    try {
+      const response = await transactionService.scanReceipt(file);
+      
+      // Safe mapping of either raw response or enveloped response.data
+      const ocr = response.data || response;
+
+      if (ocr) {
+        toast.success('Receipt parsed by AI successfully!', { id: toastId });
+        
+        // Step 1: Open standard creation modal
+        setShowModal(true);
+        
+        // Step 2: Populate existing react state fields
+        setFormData({
+          amount: ocr.total_amount || ocr.amount || '',
+          type: 'expense',
+          description: ocr.store_name ? `AI Scan: ${ocr.store_name}` : 'AI Receipt Scan',
+          date: ocr.date ? new Date(ocr.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          categoryId: ''
+        });
+
+        // Step 3: Perform intelligent category string fuzzy mapping
+        const candidateTag = ocr.suggested_category || ocr.bill_type || '';
+        if (candidateTag && categories.length > 0) {
+          const matchedCat = categories.find(cat => 
+            cat.name.toLowerCase().includes(candidateTag.toLowerCase()) ||
+            candidateTag.toLowerCase().includes(cat.name.toLowerCase())
+          );
+          if (matchedCat) {
+            setFormData(prev => ({ ...prev, categoryId: matchedCat.id }));
+            toast.success(`Auto-matched category: ${matchedCat.name}`);
+          }
+
+        }
+      } else {
+        throw new Error('Invalid OCR result');
+      }
+    } catch (err) {
+      toast.error(err.message || 'AI Scan failed. Please enter manually.', { id: toastId });
+      console.error('React OCR Upload Error:', err);
+    } finally {
+      setScanning(false);
+      e.target.value = null; // Reset input selector
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       amount: '',
@@ -87,10 +143,11 @@ const Transaction = () => {
       // Ensure date is formatted for input type="date"
       date: new Date(transaction.date).toISOString().split('T')[0]
     });
-    setCurrentTransactionId(transaction._id);
+    setCurrentTransactionId(transaction.id);
     setIsEditing(true);
     setShowModal(true);
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -134,9 +191,10 @@ const Transaction = () => {
   };
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat._id === categoryId);
+    const category = categories.find(cat => cat.id === categoryId);
     return category?.name || 'Unknown';
   };
+
 
   const availableCategories = categories.filter(cat => cat.type === formData.type);
 
@@ -152,6 +210,31 @@ const Transaction = () => {
             <Filter size={20} />
             Filters
           </button>
+          <input
+            type="file"
+            id="scan-receipt-file-input"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileScan}
+            disabled={scanning}
+          />
+          <button 
+            className="button" 
+            style={{ 
+              backgroundColor: '#8b5cf6', 
+              color: 'white', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              cursor: scanning ? 'not-allowed' : 'pointer',
+              opacity: scanning ? 0.7 : 1
+            }}
+            disabled={scanning}
+            onClick={() => document.getElementById('scan-receipt-file-input').click()}
+          >
+            {scanning ? <Loader className="animate-spin" size={20} /> : <Camera size={20} />}
+            {scanning ? 'AI Scanning...' : 'AI Scan Receipt'}
+          </button>
           <button 
             className="button button-primary" 
             onClick={() => { resetForm(); setShowModal(true); }}
@@ -161,6 +244,7 @@ const Transaction = () => {
           </button>
         </div>
       </div>
+
 
       {/* Filters */}
       {showFilters && (
@@ -188,10 +272,11 @@ const Transaction = () => {
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
+                  <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
                 ))}
+
               </select>
             </div>
 
@@ -239,8 +324,9 @@ const Transaction = () => {
               </thead>
               <tbody>
                 {transactions.map((transaction) => (
-                  <tr key={transaction._id}>
+                  <tr key={transaction.id}>
                     <td>{new Date(transaction.date).toLocaleDateString()}</td>
+
                     <td>{transaction.description || '-'}</td>
                     <td>{getCategoryName(transaction.categoryId)}</td>
                     <td>
@@ -262,9 +348,10 @@ const Transaction = () => {
                         </button>
                         <button
                           className="icon-button delete"
-                          onClick={() => handleDelete(transaction._id)}
+                          onClick={() => handleDelete(transaction.id)}
                           title="Delete Transaction"
                         >
+
                           <X size={18} />
                         </button>
                       </div>
@@ -324,10 +411,11 @@ const Transaction = () => {
                 >
                   <option value="">Select Category</option>
                   {availableCategories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
+                    <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
                   ))}
+
                 </select>
               </div>
 

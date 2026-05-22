@@ -1,4 +1,6 @@
 import TransactionService from "../services/TransactionService.js";
+import { parseReceiptImage } from "../services/ReceiptParserService.js";
+
 
 
 export const createTransaction = async (req, res) => {
@@ -125,3 +127,21 @@ export const getExpenseByCategory = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+export const scanReceipt = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No receipt file uploaded" });
+    }
+
+    const parsedData = await parseReceiptImage(req.file.path);
+
+    res.status(200).json({
+      message: "Receipt scanned successfully",
+      data: parsedData
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
