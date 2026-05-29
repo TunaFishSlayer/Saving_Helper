@@ -56,6 +56,21 @@ class TransactionService {
       }
     });
   }
+
+  async exportTransactions(params = {}) {
+    const queryParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/transactions/export?${queryString}` : '/transactions/export';
+    
+    return await api.get(endpoint, { isBlob: true });
+  }
 }
 
 

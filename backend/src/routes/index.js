@@ -5,6 +5,8 @@ import AuthRoute from "./authRoute.js";
 import CategoryRoute from "./categoryRoute.js";
 import TransactionRoute from "./transactionRoute.js";
 import BudgetRoute from "./budgetRoute.js";
+import GoalRoute from "./goalRoutes.js";
+import SubscriptionRoute from "./subscriptionRoutes.js";
 import { apiLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
@@ -49,5 +51,7 @@ router.use("/auth", AuthRoute);
 router.use("/categories", CategoryRoute);
 router.use("/transactions", TransactionRoute);
 router.use("/budgets", BudgetRoute);
+router.use("/goals", GoalRoute);
+router.use("/subscriptions", SubscriptionRoute);
 
 export default router;

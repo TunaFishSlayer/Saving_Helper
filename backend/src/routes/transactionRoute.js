@@ -9,7 +9,8 @@ import {
   getTotalByType,
   getMonthlySummary,
   getExpenseByCategory,
-  scanReceipt
+  scanReceipt,
+  exportTransactions
 } from "../controller/transactionController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -186,6 +187,8 @@ router.get("/summary/monthly", getMonthlySummary);
  *         description: Expense data by category
  */
 router.get("/summary/category", getExpenseByCategory);
+
+router.get("/export", exportTransactions);
 
 // Single transaction operations
 /**

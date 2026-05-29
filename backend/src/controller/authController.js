@@ -110,17 +110,22 @@ export const loginGoogle = async (req, res) => {
 // POST /api/auth/request-reset-password
 export const requestResetPassword = async (req, res) => {
   const { email } = req.body;
-  const code = await UserService.requestResetPassword(email);
-  if (code) {
-    await EmailService.sendPasswordResetEmail(email, code);
-    logger.info(`Password reset email sent to ${email}`);
-    return res.status(200).json({ 
-      message: "Password reset code sent to email"
-    });
-  } else {
-    logger.warn(`Failed to generate reset code for ${email}`);
-    return res.status(400).json({ message: "Failed to generate reset code" });
+  try {
+    const code = await UserService.requestResetPassword(email);
+    if (code) {
+      await EmailService.sendPasswordResetEmail(email, code);
+      logger.info(`Password reset email sent to ${email}`);
+    } else {
+      logger.warn(`Password reset requested for non-existent user: ${email}`);
+    }
+  } catch (error) {
+    logger.error(`Error during password reset request for ${email}: ${error.message}`);
   }
+  
+  // Return generic status to prevent user enumeration
+  return res.status(200).json({ 
+    message: "If that email exists in our system, a password reset code has been sent."
+  });
 };
 
 // POST /api/auth/reset-password

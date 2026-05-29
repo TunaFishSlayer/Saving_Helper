@@ -100,6 +100,6 @@ Ensure your local environments have the following settings:
 * **`backend/.env`**:
   ```env
   PORT=5000
-  MONGO_URI=your_mongodb_connection_string
+  DATABASE_URL=your_postgresql_connection_string
   GROQ_API_KEY=your_gsk_key_here
   ```

@@ -19,6 +19,12 @@ enum BudgetPeriod {
   yearly
 }
 
+enum BillingCycle {
+  weekly
+  monthly
+  yearly
+}
+
 enum AuthProvider {
   local
   google
@@ -39,6 +45,8 @@ model User {
   categories       Category[]
   transactions     Transaction[]
   budgets          Budget[]
+  goals            Goal[]
+  subscriptions    Subscription[]
 }
 
 model Category {
@@ -52,6 +60,7 @@ model Category {
   
   transactions Transaction[]
   budgets      Budget[]
+  subscriptions Subscription[]
 
   @@unique([userId, name])
 }
@@ -93,4 +102,37 @@ model Budget {
   category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([userId, categoryId, period, isActive])
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id              String       @id @default(uuid())
+  name            String
+  amount          Float
+  billingCycle    BillingCycle @default(monthly)
+  nextBillingDate DateTime
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isActive])
 }

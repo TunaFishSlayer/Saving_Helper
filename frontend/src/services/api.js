@@ -7,10 +7,14 @@ class ApiService {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     
     const headers = {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers
     };
+
+    if (headers['Content-Type'] === 'multipart/form-data') {
+      delete headers['Content-Type'];
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -33,6 +37,10 @@ class ApiService {
         throw new Error(errorMessage || `HTTP ${response.status}: ${response.statusText}`);
       }
 
+      if (options.isBlob) {
+        return await response.blob();
+      }
+
       // Handle cases where response might be empty (like 204 No Content)
       const text = await response.text();
       return text ? JSON.parse(text) : {};
@@ -49,26 +57,29 @@ class ApiService {
 
 
   post(endpoint, body, options = {}) {
+    const isFormData = body instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(body)
+      body: isFormData ? body : JSON.stringify(body)
     });
   }
 
   put(endpoint, body, options = {}) {
+    const isFormData = body instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'PUT',
-      body: JSON.stringify(body)
+      body: isFormData ? body : JSON.stringify(body)
     });
   }
 
   patch(endpoint, body, options = {}) {
+    const isFormData = body instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'PATCH',
-      body: JSON.stringify(body)
+      body: isFormData ? body : JSON.stringify(body)
     });
   }
 

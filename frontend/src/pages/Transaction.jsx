@@ -1,7 +1,7 @@
 // src/pages/Transaction.jsx
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Filter, DollarSign, Edit2, Camera, Loader } from 'lucide-react'; 
+import { Plus, X, Filter, DollarSign, Edit2, Camera, Loader, Download } from 'lucide-react'; 
 import transactionService from '../services/transactionService';
 import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/constants';
@@ -176,6 +176,32 @@ const Transaction = () => {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await transactionService.exportTransactions(filters);
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `transactions_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Transactions exported to Excel!');
+    } catch (err) {
+      console.error('Failed to export transactions:', err);
+      toast.error('Failed to export transactions to Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Delete this transaction?')) return;
 
@@ -234,6 +260,15 @@ const Transaction = () => {
           >
             {scanning ? <Loader className="animate-spin" size={20} /> : <Camera size={20} />}
             {scanning ? 'AI Scanning...' : 'AI Scan Receipt'}
+          </button>
+          <button 
+            className="button button-secondary"
+            onClick={handleExport}
+            disabled={exporting}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            {exporting ? <Loader className="animate-spin" size={20} /> : <Download size={20} />}
+            {exporting ? 'Export Excel' : 'Export Excel'}
           </button>
           <button 
             className="button button-primary" 

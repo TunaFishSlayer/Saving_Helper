@@ -80,6 +80,43 @@ class TransactionService {
         };
     }
 
+    static async getUserTransactionsForExport({
+        userId,
+        type,
+        categoryId,
+        startDate,
+        endDate
+    }) {
+        if (!userId) {
+            throw new Error("User ID is required");
+        }
+
+        const where = { userId };
+
+        if (type) where.type = type;
+        if (categoryId) where.categoryId = categoryId;
+
+        if (startDate || endDate) {
+            where.date = {};
+            if (startDate) where.date.gte = new Date(startDate);
+            if (endDate) where.date.lte = new Date(endDate);
+        }
+
+        return prisma.transaction.findMany({
+            where,
+            include: {
+                category: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: {
+                date: "desc"
+            }
+        });
+    }
+
 
     static async getTransactionById(transactionId, userId) {
         const transaction = await prisma.transaction.findFirst({

@@ -11,6 +11,8 @@ import Category from './pages/Category.jsx';
 import Profile from './pages/Profile.jsx';
 import BudgetAnalytics from './pages/BudgetAnalytics.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Goals from './pages/Goals.jsx';
+import Subscriptions from './pages/Subscriptions.jsx';
 
 export const router = createBrowserRouter([
   {
@@ -48,6 +50,14 @@ export const router = createBrowserRouter([
       {
         path: 'budget-analytics',
         element: <BudgetAnalytics />
+      },
+      {
+        path: 'goals',
+        element: <Goals />
+      },
+      {
+        path: 'subscriptions',
+        element: <Subscriptions />
       }
 
     ]

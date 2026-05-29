@@ -1,5 +1,6 @@
 import TransactionService from "../services/TransactionService.js";
 import { parseReceiptImage } from "../services/ReceiptParserService.js";
+import XLSX from "xlsx";
 
 
 
@@ -140,6 +141,42 @@ export const scanReceipt = async (req, res) => {
       message: "Receipt scanned successfully",
       data: parsedData
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const exportTransactions = async (req, res) => {
+  try {
+    const transactions = await TransactionService.getUserTransactionsForExport({
+      userId: req.user.userId,
+      type: req.query.type,
+      categoryId: req.query.categoryId,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate
+    });
+
+    // Format data into rows
+    const rows = transactions.map(t => ({
+      "Date": new Date(t.date).toISOString().split('T')[0],
+      "Description": t.description || "",
+      "Category": t.category?.name || "Unknown",
+      "Type": t.type === 'income' ? 'Income' : 'Expense',
+      "Amount (VND)": t.amount
+    }));
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+
+    // Write worksheet to buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send response with file attachment headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions.xlsx"');
+    res.send(buffer);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
