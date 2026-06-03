@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarClock, Plus, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '../utils/constants';
 
 const Subscriptions = () => {
   const [subscriptions, setSubscriptions] = useState([]);
   
-  // Dummy data for visual representation initially
+  // Dummy data scaled for VND currency
   useEffect(() => {
     setSubscriptions([
-      { id: '1', name: 'Netflix', amount: 15.99, billingCycle: 'monthly', nextBillingDate: '2026-06-15' },
-      { id: '2', name: 'Gym Membership', amount: 45.00, billingCycle: 'monthly', nextBillingDate: '2026-06-01' },
-      { id: '3', name: 'Amazon Prime', amount: 139.00, billingCycle: 'yearly', nextBillingDate: '2026-11-20' }
+      { id: '1', name: 'Netflix', amount: 260000, billingCycle: 'monthly', nextBillingDate: '2026-06-15' },
+      { id: '2', name: 'Gym Membership', amount: 500000, billingCycle: 'monthly', nextBillingDate: '2026-06-01' },
+      { id: '3', name: 'Amazon Prime', amount: 3200000, billingCycle: 'yearly', nextBillingDate: '2026-11-20' }
     ]);
   }, []);
 
@@ -32,7 +33,7 @@ const Subscriptions = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: '1.2rem', opacity: 0.9 }}>Total Fixed Monthly Cost</h2>
           <p style={{ margin: '8px 0 0 0', fontSize: '2.5rem', fontWeight: 'bold' }}>
-            ${totalMonthlyCost.toFixed(2)}
+            {formatCurrency(totalMonthlyCost)}
           </p>
         </div>
         <RefreshCw size={48} opacity={0.5} />
@@ -53,7 +54,7 @@ const Subscriptions = () => {
             {subscriptions.map((sub) => (
               <tr key={sub.id} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={{ padding: '16px', fontWeight: '500' }}>{sub.name}</td>
-                <td style={{ padding: '16px', color: '#E91E63', fontWeight: '600' }}>${sub.amount.toFixed(2)}</td>
+                <td style={{ padding: '16px', color: '#E91E63', fontWeight: '600' }}>{formatCurrency(sub.amount)}</td>
                 <td style={{ padding: '16px', textTransform: 'capitalize' }}>
                   <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
                     {sub.billingCycle}

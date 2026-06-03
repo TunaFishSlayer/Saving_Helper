@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 export const getSubscriptions = async (req, res, next) => {
   try {
     const subscriptions = await prisma.subscription.findMany({
-      where: { userId: req.user.id },
+      where: { userId: req.user.userId },
       include: { category: true },
       orderBy: { nextBillingDate: 'asc' }
     });
@@ -26,7 +26,7 @@ export const createSubscription = async (req, res, next) => {
         billingCycle,
         nextBillingDate: new Date(nextBillingDate),
         categoryId,
-        userId: req.user.id
+        userId: req.user.userId
       },
       include: { category: true }
     });
@@ -42,7 +42,7 @@ export const toggleSubscription = async (req, res, next) => {
     const { id } = req.params;
     const { isActive } = req.body;
     const subscription = await prisma.subscription.update({
-      where: { id, userId: req.user.id },
+      where: { id, userId: req.user.userId },
       data: { isActive },
       include: { category: true }
     });
@@ -57,7 +57,7 @@ export const deleteSubscription = async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.subscription.delete({
-      where: { id, userId: req.user.id }
+      where: { id, userId: req.user.userId }
     });
     res.json({ message: 'Subscription deleted successfully' });
   } catch (error) {

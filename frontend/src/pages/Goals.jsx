@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Plus, Target } from 'lucide-react';
-// Note: You may need to create a goalsService similar to categoryService
+import { formatCurrency } from '../utils/constants';
 
 const Goals = () => {
   const [goals, setGoals] = useState([]);
   
-  // Dummy data for visual representation initially
+  // Dummy data scaled for VND currency
   useEffect(() => {
     setGoals([
-      { id: '1', name: 'Emergency Fund', targetAmount: 5000, currentAmount: 2500, deadline: '2027-01-01' },
-      { id: '2', name: 'Vacation', targetAmount: 1500, currentAmount: 300, deadline: '2026-08-01' }
+      { id: '1', name: 'Emergency Fund', targetAmount: 50000000, currentAmount: 25000000, deadline: '2027-01-01' },
+      { id: '2', name: 'Vacation', targetAmount: 15000000, currentAmount: 3000000, deadline: '2026-08-01' }
     ]);
   }, []);
 
@@ -34,8 +34,8 @@ const Goals = () => {
                 <Target size={20} color="#666" />
               </div>
               <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#666' }}>
-                <span>${goal.currentAmount} saved</span>
-                <span>Goal: ${goal.targetAmount}</span>
+                <span>{formatCurrency(goal.currentAmount)} saved</span>
+                <span>Goal: {formatCurrency(goal.targetAmount)}</span>
               </div>
               <div style={{ width: '100%', height: '12px', background: '#f0f0f0', borderRadius: '6px', overflow: 'hidden', marginBottom: '16px' }}>
                 <div style={{ width: `${progress}%`, height: '100%', background: progress >= 100 ? '#4CAF50' : '#3B82F6', transition: 'width 0.5s ease' }}></div>

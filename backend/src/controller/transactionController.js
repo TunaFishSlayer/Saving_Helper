@@ -157,13 +157,19 @@ export const exportTransactions = async (req, res) => {
     });
 
     // Format data into rows
-    const rows = transactions.map(t => ({
-      "Date": new Date(t.date).toISOString().split('T')[0],
-      "Description": t.description || "",
-      "Category": t.category?.name || "Unknown",
-      "Type": t.type === 'income' ? 'Income' : 'Expense',
-      "Amount (VND)": t.amount
-    }));
+    const rows = transactions.map(t => {
+      const d = new Date(t.date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = String(d.getFullYear()).slice(-2);
+      return {
+        "Date": `${day}/${month}/${year}`,
+        "Description": t.description || "",
+        "Category": t.category?.name || "Unknown",
+        "Type": t.type === 'income' ? 'Income' : 'Expense',
+        "Amount (VND)": t.amount
+      };
+    });
 
     // Create workbook and worksheet
     const worksheet = XLSX.utils.json_to_sheet(rows);

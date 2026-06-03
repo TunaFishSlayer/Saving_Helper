@@ -360,7 +360,13 @@ const Transaction = () => {
               <tbody>
                 {transactions.map((transaction) => (
                   <tr key={transaction.id}>
-                    <td>{new Date(transaction.date).toLocaleDateString()}</td>
+                    <td>{(() => {
+                      const d = new Date(transaction.date);
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = String(d.getFullYear()).slice(-2);
+                      return `${day}/${month}/${year}`;
+                    })()}</td>
 
                     <td>{transaction.description || '-'}</td>
                     <td>{getCategoryName(transaction.categoryId)}</td>
