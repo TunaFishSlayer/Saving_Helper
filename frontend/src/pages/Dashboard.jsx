@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  BarChart, Bar
+  BarChart, Bar, AreaChart, Area
 } from 'recharts';
 import { TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
 import transactionService from '../services/transactionService';
@@ -114,19 +114,24 @@ const Dashboard = () => {
 
         const income = summary.find(s => s.id === 'income')?.total || 0;
         const expense = summary.find(s => s.id === 'expense')?.total || 0;
-
+        const netSavings = income - expense;
+        const savingsRate = income > 0 ? Math.round((netSavings / income) * 100) : 0;
 
         trend.push({
           month: monthData.label,
           income,
-          expense
+          expense,
+          netSavings,
+          savingsRate
         });
       } catch (error) {
         console.error(`Failed to fetch data for ${monthData.label}:`, error);
         trend.push({
           month: monthData.label,
           income: 0,
-          expense: 0
+          expense: 0,
+          netSavings: 0,
+          savingsRate: 0
         });
       }
     }
@@ -142,18 +147,27 @@ const Dashboard = () => {
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div style={{
           background: 'white',
           padding: '12px',
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          color: '#333'
         }}>
-          <p style={{ margin: 0, fontWeight: 600 }}>{payload[0].name}</p>
-          <p style={{ margin: '4px 0 0 0', color: '#6366f1' }}>
-            {formatCurrency(payload[0].value)}
-          </p>
+          <p style={{ margin: '0 0 8px 0', fontWeight: 600 }}>{payload[0].name || data.month}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ margin: '4px 0', color: entry.stroke || entry.fill || '#6366f1', fontWeight: 500 }}>
+              {entry.name}: {formatCurrency(entry.value)}
+            </p>
+          ))}
+          {data.savingsRate !== undefined && (
+            <p style={{ margin: '8px 0 0 0', color: '#10b981', fontWeight: 600, borderTop: '1px solid #eee', paddingTop: '6px' }}>
+              Savings Rate: {data.savingsRate}%
+            </p>
+          )}
         </div>
       );
     }
@@ -273,6 +287,35 @@ const Dashboard = () => {
                 activeDot={{ r: 6 }}
               />
             </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Net Savings Rate Trend - Full Width */}
+        <div className="card chart-full">
+          <h2 className="card-title">Net Savings Rate Trend</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={trendData}>
+              <defs>
+                <linearGradient id="colorNetSavings" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <XAxis dataKey="month" stroke="#6b7280" />
+              <YAxis stroke="#6b7280" tickFormatter={(value) => `${(value/1000000).toFixed(0)}M`} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="netSavings" 
+                stroke="#10b981" 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill="url(#colorNetSavings)" 
+                name="Net Savings"
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 

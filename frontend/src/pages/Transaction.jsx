@@ -6,6 +6,7 @@ import transactionService from '../services/transactionService';
 import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/constants';
 import toast from 'react-hot-toast';
+import FormattedAmountInput from '../components/FormattedAmountInput';
 
 const Transaction = () => {
   const [transactions, setTransactions] = useState([]);
@@ -14,6 +15,7 @@ const Transaction = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
@@ -338,70 +340,118 @@ const Transaction = () => {
         </div>
       )}
 
-      {/* Transactions Table */}
+      {/* Transactions Table / Mobile Cards Feed */}
       <div className="card">
         {loading ? (
           <div className="loader-container">
             <div className="loader"></div>
           </div>
         ) : transactions.length > 0 ? (
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id}>
-                    <td>{(() => {
-                      const d = new Date(transaction.date);
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = String(d.getFullYear()).slice(-2);
-                      return `${day}/${month}/${year}`;
-                    })()}</td>
-
-                    <td>{transaction.description || '-'}</td>
-                    <td>{getCategoryName(transaction.categoryId)}</td>
-                    <td>
-                      <span className={`badge badge-${transaction.type}`}>
-                        {transaction.type.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className={`amount-${transaction.type}`}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          className="icon-button edit"
-                          onClick={() => handleEdit(transaction)}
-                          title="Edit Transaction"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          className="icon-button delete"
-                          onClick={() => handleDelete(transaction.id)}
-                          title="Delete Transaction"
-                        >
-
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* Desktop Table View */}
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td>{(() => {
+                        const d = new Date(transaction.date);
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const year = String(d.getFullYear()).slice(-2);
+                        return `${day}/${month}/${year}`;
+                      })()}</td>
+
+                      <td>{transaction.description || '-'}</td>
+                      <td>{getCategoryName(transaction.categoryId)}</td>
+                      <td>
+                        <span className={`badge badge-${transaction.type}`}>
+                          {transaction.type.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className={`amount-${transaction.type}`}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="icon-button edit"
+                            onClick={() => handleEdit(transaction)}
+                            title="Edit Transaction"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button
+                            className="icon-button delete"
+                            onClick={() => handleDelete(transaction.id)}
+                            title="Delete Transaction"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards Feed View */}
+            <div className="mobile-transactions-feed">
+              {transactions.map((transaction) => (
+                <div key={transaction.id} className="mobile-transaction-card">
+                  <div className="card-top">
+                    <span className="card-category">
+                      {getCategoryName(transaction.categoryId)}
+                    </span>
+                    <span className={`card-amount amount-${transaction.type}`}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </span>
+                  </div>
+                  <div className="card-middle">
+                    <p className="card-desc">{transaction.description || '-'}</p>
+                  </div>
+                  <div className="card-bottom">
+                    <span className="card-date">
+                      {(() => {
+                        const d = new Date(transaction.date);
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const year = String(d.getFullYear()).slice(-2);
+                        return `${day}/${month}/${year}`;
+                      })()}
+                    </span>
+                    <div className="card-actions">
+                      <button
+                        className="card-action-btn edit"
+                        onClick={() => handleEdit(transaction)}
+                      >
+                        <Edit2 size={14} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        className="card-action-btn delete"
+                        onClick={() => handleDelete(transaction.id)}
+                      >
+                        <X size={14} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="empty-state">
             <DollarSign size={64} />
@@ -462,13 +512,11 @@ const Transaction = () => {
 
               <div className="form-group">
                 <label>Amount</label>
-                <input
-                  type="number"
-                  step="1000"
-                  min="0"
+                <FormattedAmountInput
                   className="input"
+                  placeholder="e.g. 1.000.000"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, amount: val })}
                   required
                 />
               </div>
@@ -510,6 +558,41 @@ const Transaction = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Action Button (FAB) for Mobile Viewports */}
+      <div className={`fab-container ${fabOpen ? 'open' : ''}`}>
+        <div className="fab-options">
+          <button 
+            className="fab-option-btn" 
+            onClick={() => {
+              setFabOpen(false);
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            <Plus size={16} />
+            <span>Add Manual</span>
+          </button>
+          <button 
+            className="fab-option-btn" 
+            disabled={scanning}
+            onClick={() => {
+              setFabOpen(false);
+              document.getElementById('scan-receipt-file-input').click();
+            }}
+          >
+            {scanning ? <Loader className="animate-spin" size={16} /> : <Camera size={16} />}
+            <span>{scanning ? 'Scanning...' : 'AI Scan Receipt'}</span>
+          </button>
+        </div>
+        <button 
+          className={`fab-main ${fabOpen ? 'active' : ''}`}
+          onClick={() => setFabOpen(!fabOpen)}
+          title="Add or Scan"
+        >
+          <Plus size={24} />
+        </button>
+      </div>
     </div>
   );
 };

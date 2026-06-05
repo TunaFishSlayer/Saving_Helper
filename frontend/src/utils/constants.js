@@ -49,3 +49,9 @@ export const STORAGE_KEYS = {
 export const formatCurrency = (amount) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
+
+export const formatInputAmountWithDots = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const clean = value.toString().replace(/\D/g, '');
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};

@@ -48,3 +48,155 @@
 .transaction-expense {
   color: var(--danger);
 }
+
+/* --- Mobile Card Feed & Responsive Styles --- */
+.mobile-transactions-feed {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .transactions-page .card {
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .transactions-page .table-container {
+    display: none;
+  }
+
+  .mobile-transactions-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 0.5rem;
+  }
+
+  .mobile-transaction-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid rgba(229, 231, 235, 0.5);
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-transaction-card:active {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-category {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: var(--bg);
+    color: var(--text-light);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  .card-amount {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+
+  .card-middle {
+    display: flex;
+    align-items: center;
+    margin: 2px 0;
+  }
+
+  .card-desc {
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+
+  .card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(229, 231, 235, 0.4);
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .card-date {
+    font-size: 0.8rem;
+    color: var(--text-light);
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .card-action-btn {
+    border: none;
+    background: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .card-action-btn.edit {
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--primary);
+  }
+
+  .card-action-btn.edit:hover {
+    background: rgba(99, 102, 241, 0.15);
+  }
+
+  .card-action-btn.delete {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--danger);
+  }
+
+  .card-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  /* Compact grid layout for header buttons on mobile */
+  .transactions-page .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .transactions-page .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .transactions-page .header-actions button {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  /* Desktop primary action triggers hidden on mobile (FAB takes over) */
+  .transactions-page .header-actions button.button-primary,
+  .transactions-page .header-actions button[style*="background-color: rgb(139, 92, 246)"] {
+    display: none !important;
+  }
+}
+

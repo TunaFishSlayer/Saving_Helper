@@ -3,6 +3,7 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import BottomNavbar from './BottomNavbar';
 import { useState } from 'react';
 import { Toaster } from 'react-hot-toast'; // Already imported
 
@@ -24,6 +25,7 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+      <BottomNavbar />
     </div>
   );
 };

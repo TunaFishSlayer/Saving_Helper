@@ -263,3 +263,121 @@
   display: flex;
   gap: 0.75rem;
 }
+
+/* --- Mobile Bottom Navigation Bar --- */
+.bottom-navbar {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  height: 66px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 20px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  z-index: 998;
+  padding: 0 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  text-decoration: none;
+  font-size: 0.68rem;
+  font-weight: 500;
+  gap: 4px;
+  flex: 1;
+  height: 100%;
+  transition: all 0.2s ease;
+  border-radius: 12px;
+  margin: 4px 0;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+.bottom-nav-icon {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+  transform: translateY(-2px) scale(1.05);
+  color: var(--primary);
+}
+
+.bottom-nav-label {
+  opacity: 0.8;
+  font-size: 0.62rem;
+}
+
+.bottom-nav-item.active .bottom-nav-label {
+  opacity: 1;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .bottom-navbar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 1.25rem 1rem 96px 1rem; /* Extra padding at the bottom so elements are not covered */
+  }
+  
+  .header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .header-title {
+    font-size: 1.15rem;
+  }
+}
+
+/* Subscriptions Content Grid */
+.subscriptions-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .subscriptions-content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Goals Content Grid */
+.goals-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .goals-content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+
+

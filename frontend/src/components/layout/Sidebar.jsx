@@ -2,16 +2,18 @@
 
 import { NavLink } from 'react-router-dom';
 import { Home, DollarSign, Target, FolderOpen, X, ChartColumn, Trophy, CalendarClock } from 'lucide-react'; 
+import { useLanguage } from '../../context/LanguageContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
+  const { t } = useLanguage();
 
   const navItems = [
-    { path: '/', icon: Home, label: 'Dashboard' },
-    { path: '/transactions', icon: DollarSign, label: 'Transaction' },
-    { path: '/budgets', icon: Target, label: 'Budget' },
-    { path: '/categories', icon: FolderOpen, label: 'Category' },
-    { path: '/goals', icon: Trophy, label: 'Goals' },
-    { path: '/subscriptions', icon: CalendarClock, label: 'Subscriptions' },
+    { path: '/', icon: Home, translationKey: 'navDashboard' },
+    { path: '/transactions', icon: DollarSign, translationKey: 'navTransactions' },
+    { path: '/budgets', icon: Target, translationKey: 'navBudgets' },
+    { path: '/categories', icon: FolderOpen, translationKey: 'navCategories' },
+    { path: '/goals', icon: Trophy, translationKey: 'navGoals' },
+    { path: '/subscriptions', icon: CalendarClock, translationKey: 'navSubscriptions' },
   ];
 
   return (
@@ -42,7 +44,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               end={item.path === '/'}
             >
               <item.icon size={20} />
-              <span>{item.label}</span>
+              <span>{t(item.translationKey)}</span>
             </NavLink>
           ))}
         </nav>

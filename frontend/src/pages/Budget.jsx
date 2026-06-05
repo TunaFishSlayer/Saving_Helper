@@ -5,6 +5,7 @@ import { Plus, X, Target, Edit2 } from 'lucide-react'; // Added Edit2 icon
 import budgetService from '../services/budgetService';
 import categoryService from '../services/categoryService';
 import { formatCurrency } from '../utils/constants';
+import FormattedAmountInput from '../components/FormattedAmountInput';
 
 const Budget = () => {
   const [budgets, setBudgets] = useState([]);
@@ -239,13 +240,11 @@ const Budget = () => {
 
               <div className="form-group">
                 <label>Amount</label>
-                <input
-                  type="number"
-                  step="100000"
-                  min="0"
+                <FormattedAmountInput
                   className="input"
+                  placeholder="e.g. 1.000.000"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, amount: val })}
                   required
                 />
               </div>
