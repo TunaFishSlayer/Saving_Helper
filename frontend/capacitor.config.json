@@ -1,0 +1,11 @@
+{
+  "appId": "com.gr1.savingshelper",
+  "appName": "GR1 Savings Helper",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "cleartext": true
+  }
+}

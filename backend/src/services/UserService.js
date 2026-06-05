@@ -16,13 +16,13 @@ class UserService {
             { name: "Gifts", type: "income", description: "Gifts and bonuses" }
         ];
 
-        await prisma.category.createMany({
-            data: defaultCategories.map(cat => ({
-                ...cat,
-                userId
-            })),
-            skipDuplicates: true
-        });
+        for (const cat of defaultCategories) {
+            await prisma.category.upsert({
+                where: { userId_name: { userId, name: cat.name } },
+                update: {},
+                create: { ...cat, userId }
+            });
+        }
     }
 
     static async registerUser({ email, password, name }) {

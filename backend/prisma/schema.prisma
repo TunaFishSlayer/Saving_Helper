@@ -1,33 +1,10 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
   provider = "prisma-client-js"
-}
-
-enum TransactionType {
-  income
-  expense
-}
-
-enum BudgetPeriod {
-  custom
-  weekly
-  monthly
-  yearly
-}
-
-enum BillingCycle {
-  weekly
-  monthly
-  yearly
-}
-
-enum AuthProvider {
-  local
-  google
 }
 
 model User {
@@ -36,12 +13,12 @@ model User {
   passwordHash     String?
   name             String
   googleId         String?
-  provider         AuthProvider   @default(local)
+  provider         String         @default("local")
   resetCode        String?
   resetCodeExpiry  DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-  
+
   categories       Category[]
   transactions     Transaction[]
   budgets          Budget[]
@@ -50,34 +27,34 @@ model User {
 }
 
 model Category {
-  id          String          @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  type        TransactionType
+  type        String
   description String?
   userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime        @default(now())
-  
-  transactions Transaction[]
-  budgets      Budget[]
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  transactions  Transaction[]
+  budgets       Budget[]
   subscriptions Subscription[]
 
   @@unique([userId, name])
 }
 
 model Transaction {
-  id          String          @id @default(uuid())
+  id          String   @id @default(uuid())
   amount      Float
   description String?
-  type        TransactionType
+  type        String
   date        DateTime
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime @default(now())
 
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  categoryId  String
-  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   @@index([userId, date])
   @@index([userId, type])
@@ -85,21 +62,21 @@ model Transaction {
 }
 
 model Budget {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   amount         Float
-  period         BudgetPeriod @default(monthly)
+  period         String   @default("monthly")
   startDate      DateTime
   endDate        DateTime?
-  alertThreshold Float        @default(80)
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  alertThreshold Float    @default(80)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  categoryId     String
-  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([userId, categoryId, period, isActive])
 }
@@ -113,26 +90,26 @@ model Goal {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model Subscription {
-  id              String       @id @default(uuid())
+  id              String   @id @default(uuid())
   name            String
   amount          Float
-  billingCycle    BillingCycle @default(monthly)
+  billingCycle    String   @default("monthly")
   nextBillingDate DateTime
-  isActive        Boolean      @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  userId          String
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId      String
-  category        Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   @@index([userId, isActive])
 }

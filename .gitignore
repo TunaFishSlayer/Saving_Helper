@@ -4,3 +4,7 @@
 backend/logs/
 
 knowledge_tree.md
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+frontend/android/
+frontend/.env.android
