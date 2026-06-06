@@ -3,21 +3,36 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 import { STORAGE_KEYS } from '../utils/constants';
+import { generateUUID } from '../services/localDb';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem(STORAGE_KEYS.TOKEN));
+  const [authMode, setAuthMode] = useState(localStorage.getItem('auth_mode') || 'cloud'); // 'cloud' | 'offline'
+  const [deviceUuid, setDeviceUuid] = useState(localStorage.getItem('device_uuid'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
+    // Generate an anonymous transparent device UUID if not present
+    if (!deviceUuid) {
+      const newUuid = generateUUID();
+      localStorage.setItem('device_uuid', newUuid);
+      setDeviceUuid(newUuid);
+    }
+  }, [deviceUuid]);
+
+  useEffect(() => {
+    if (authMode === 'offline') {
+      setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
+      setLoading(false);
+    } else if (token) {
       fetchProfile();
     } else {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, authMode]);
 
   const fetchProfile = async () => {
     try {
@@ -33,12 +48,24 @@ export const AuthProvider = ({ children }) => {
 
   const login = (newToken, userData) => {
     localStorage.setItem(STORAGE_KEYS.TOKEN, newToken);
+    localStorage.setItem('auth_mode', 'cloud');
+    setAuthMode('cloud');
     setToken(newToken);
     setUser(userData);
   };
 
+  const loginGuest = () => {
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    localStorage.setItem('auth_mode', 'offline');
+    setAuthMode('offline');
+    setToken(null);
+    setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
+  };
+
   const logout = () => {
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    localStorage.removeItem('auth_mode');
+    setAuthMode('cloud');
     setToken(null);
     setUser(null);
   };
@@ -47,8 +74,10 @@ export const AuthProvider = ({ children }) => {
     setUser(updatedUser);
   };
 
+  const isGuest = authMode === 'offline';
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, token, authMode, isGuest, deviceUuid, login, loginGuest, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

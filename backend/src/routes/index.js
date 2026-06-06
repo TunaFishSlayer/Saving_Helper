@@ -7,6 +7,7 @@ import TransactionRoute from "./transactionRoute.js";
 import BudgetRoute from "./budgetRoute.js";
 import GoalRoute from "./goalRoutes.js";
 import SubscriptionRoute from "./subscriptionRoutes.js";
+import SyncRoute from "./syncRoute.js";
 import { apiLimiter } from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
@@ -53,5 +54,6 @@ router.use("/transactions", TransactionRoute);
 router.use("/budgets", BudgetRoute);
 router.use("/goals", GoalRoute);
 router.use("/subscriptions", SubscriptionRoute);
+router.use("/sync", SyncRoute);
 
 export default router;

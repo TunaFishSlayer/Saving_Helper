@@ -1,0 +1,179 @@
+import { prisma } from "../config/db.js";
+import logger from "../utils/logger.js";
+
+export const syncData = async (req, res) => {
+  const { userId } = req.user;
+  const { mutations } = req.body;
+
+  if (!Array.isArray(mutations)) {
+    return res.status(400).json({ message: "Invalid mutations format" });
+  }
+
+  const processedIds = [];
+  const errors = [];
+
+  // Use a transaction to ensure all sync operations succeed or roll back together
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const mut of mutations) {
+        try {
+          const { id: queueId, action, entityType, clientUuid, payload } = mut;
+          
+          // Ensure the payload is associated with the syncing user
+          const data = {
+            ...payload,
+            userId: userId
+          };
+
+          // Remove relations/unsupported fields from payload before saving to Prisma
+          delete data.id; // We use clientUuid or let database map by clientUuid/id
+          delete data.synced; // IndexedDB specific status flag
+          delete data.category; // nested category object if any
+
+          // Make sure date fields are parsed properly into Date objects for Prisma
+          if (data.date) data.date = new Date(data.date);
+          if (data.startDate) data.startDate = new Date(data.startDate);
+          if (data.endDate) data.endDate = new Date(data.endDate);
+          if (data.deadline) data.deadline = new Date(data.deadline);
+          if (data.nextBillingDate) data.nextBillingDate = new Date(data.nextBillingDate);
+
+          if (entityType === "category") {
+            if (action === "create" || action === "update") {
+              await tx.category.upsert({
+                where: { clientUuid: clientUuid },
+                update: data,
+                create: { ...data, clientUuid }
+              });
+            } else if (action === "delete") {
+              await tx.category.deleteMany({
+                where: { clientUuid: clientUuid, userId: userId }
+              });
+            }
+          } else if (entityType === "transaction") {
+            // Ensure categoryId points to the correct Category in the database
+            if (data.categoryId) {
+              const cat = await tx.category.findUnique({
+                where: { clientUuid: data.categoryId }
+              });
+              if (cat) {
+                data.categoryId = cat.id;
+              }
+            }
+
+            if (action === "create" || action === "update") {
+              await tx.transaction.upsert({
+                where: { clientUuid: clientUuid },
+                update: data,
+                create: { ...data, clientUuid }
+              });
+            } else if (action === "delete") {
+              await tx.transaction.deleteMany({
+                where: { clientUuid: clientUuid, userId: userId }
+              });
+            }
+          } else if (entityType === "budget") {
+            if (data.categoryId) {
+              const cat = await tx.category.findUnique({
+                where: { clientUuid: data.categoryId }
+              });
+              if (cat) {
+                data.categoryId = cat.id;
+              }
+            }
+
+            if (action === "create" || action === "update") {
+              await tx.budget.upsert({
+                where: { clientUuid: clientUuid },
+                update: data,
+                create: { ...data, clientUuid }
+              });
+            } else if (action === "delete") {
+              await tx.budget.deleteMany({
+                where: { clientUuid: clientUuid, userId: userId }
+              });
+            }
+          } else if (entityType === "goal") {
+            if (action === "create" || action === "update") {
+              await tx.goal.upsert({
+                where: { clientUuid: clientUuid },
+                update: data,
+                create: { ...data, clientUuid }
+              });
+            } else if (action === "delete") {
+              await tx.goal.deleteMany({
+                where: { clientUuid: clientUuid, userId: userId }
+              });
+            }
+          } else if (entityType === "subscription") {
+            if (data.categoryId) {
+              const cat = await tx.category.findUnique({
+                where: { clientUuid: data.categoryId }
+              });
+              if (cat) {
+                data.categoryId = cat.id;
+              }
+            }
+
+            if (action === "create" || action === "update") {
+              await tx.subscription.upsert({
+                where: { clientUuid: clientUuid },
+                update: data,
+                create: { ...data, clientUuid }
+              });
+            } else if (action === "delete") {
+              await tx.subscription.deleteMany({
+                where: { clientUuid: clientUuid, userId: userId }
+              });
+            }
+          }
+
+          processedIds.push(queueId);
+        } catch (err) {
+          logger.error(`Sync error on mutation: ${JSON.stringify(mut)}. Error: ${err.message}`);
+          errors.push({ mutationId: mut.id, error: err.message });
+        }
+      }
+    });
+
+    // Pull the latest updates to return to the client
+    const updates = await fetchUserUpdates(userId);
+
+    res.status(200).json({
+      message: "Sync completed",
+      processedIds,
+      errors,
+      updates
+    });
+
+  } catch (error) {
+    logger.error(`Sync transaction failed: ${error.message}`);
+    res.status(500).json({ message: "Sync transaction failed", error: error.message });
+  }
+};
+
+export const pullUpdates = async (req, res) => {
+  const { userId } = req.user;
+  try {
+    const updates = await fetchUserUpdates(userId);
+    res.status(200).json({ updates });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to pull updates", error: error.message });
+  }
+};
+
+// Helper function to fetch all user data from DB
+async function fetchUserUpdates(userId) {
+  const categories = await prisma.category.findMany({ where: { userId } });
+  const transactions = await prisma.transaction.findMany({ where: { userId } });
+  const budgets = await prisma.budget.findMany({ where: { userId } });
+  const goals = await prisma.goal.findMany({ where: { userId } });
+  const subscriptions = await prisma.subscription.findMany({ where: { userId } });
+
+  return {
+    categories,
+    transactions,
+    budgets,
+    goals,
+    subscriptions
+  };
+}

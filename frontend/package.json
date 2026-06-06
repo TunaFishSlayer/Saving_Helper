@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:android": "vite --host",
     "build": "vite build",
     "build:android": "vite build --mode android",
     "cap:sync": "npm run build:android && npx cap sync android",
@@ -16,6 +17,7 @@
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
+    "dexie": "^4.4.3",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -5,10 +5,12 @@ import { API_BASE_URL, STORAGE_KEYS } from '../utils/constants';
 class ApiService {
   async request(endpoint, options = {}) {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    const deviceUuid = localStorage.getItem('device_uuid');
     
     const headers = {
       ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token && { Authorization: `Bearer ${token}` }),
+      ...(deviceUuid && { 'X-Device-UUID': deviceUuid }),
       ...options.headers
     };
 

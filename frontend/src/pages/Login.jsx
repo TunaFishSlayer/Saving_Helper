@@ -5,17 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import { Wallet, AlertCircle, Eye, EyeOff, ArrowLeft, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
+import { localDb } from '../services/localDb';
+import syncService from '../services/syncService';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginGuest } = useAuth();
   
-  // Modes: 'login', 'register', 'forgot', 'reset'
   const [mode, setMode] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showMergePrompt, setShowMergePrompt] = useState(false);
+  const [pendingAuth, setPendingAuth] = useState(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -57,10 +60,50 @@ const Login = () => {
           name: formData.name
         });
       }
-      login(response.token, response.user);
-      navigate('/');
+
+      // Check if there is local guest data
+      const transactionsCount = await localDb.transactions.count();
+      if (transactionsCount > 0) {
+        setPendingAuth({ token: response.token, user: response.user });
+        setShowMergePrompt(true);
+      } else {
+        login(response.token, response.user);
+        await syncService.pullLatestData();
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMergeData = async () => {
+    if (!pendingAuth) return;
+    setLoading(true);
+    try {
+      login(pendingAuth.token, pendingAuth.user);
+      await syncService.mergeGuestDataToServer();
+      setShowMergePrompt(false);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Failed to merge local data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDiscardLocalData = async () => {
+    if (!pendingAuth) return;
+    setLoading(true);
+    try {
+      login(pendingAuth.token, pendingAuth.user);
+      await syncService.clearLocalDatabase();
+      await syncService.pullLatestData();
+      setShowMergePrompt(false);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Failed to sync cloud data');
     } finally {
       setLoading(false);
     }
@@ -216,6 +259,24 @@ const Login = () => {
             <button type="submit" className="button button-primary" disabled={loading}>
               {loading ? 'Please wait...' : (mode === 'login' ? 'Login' : 'Register')}
             </button>
+
+            <div className="offline-divider" style={{margin: '1.5rem 0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
+              <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
+              <span style={{fontSize: '0.85rem', color: '#94a3b8'}}>or</span>
+              <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
+            </div>
+
+            <button
+              type="button"
+              className="button"
+              style={{backgroundColor: '#f1f5f9', color: '#334155', borderWidth: '1px', borderColor: '#cbd5e1'}}
+              onClick={() => {
+                loginGuest();
+                navigate('/');
+              }}
+            >
+              Use Offline (Guest Mode)
+            </button>
           </form>
         )}
 
@@ -302,6 +363,47 @@ const Login = () => {
           </form>
         )}
       </div>
+
+      {showMergePrompt && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(5px)'
+        }}>
+          <div className="modal-content" style={{
+            backgroundColor: '#ffffff', padding: '2rem', borderRadius: '16px',
+            maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{fontSize: '1.4rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem'}}>
+              Local Data Found
+            </h2>
+            <p style={{fontSize: '0.95rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: '1.5'}}>
+              We found transaction records created while using offline guest mode on this device. How would you like to proceed?
+            </p>
+            
+            <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={handleMergeData}
+                disabled={loading}
+              >
+                Merge records into my online account
+              </button>
+              
+              <button
+                type="button"
+                className="button"
+                style={{backgroundColor: '#f1f5f9', color: '#ef4444', borderWidth: '1px', borderColor: '#f87171'}}
+                onClick={handleDiscardLocalData}
+                disabled={loading}
+              >
+                Discard local data and use cloud records
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

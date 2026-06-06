@@ -78,7 +78,7 @@ export const translations = {
     navLogout: "Đăng Xuất",
 
     // Header
-    welcome: "Chào mừng trở lại",
+    welcome: "Xin chào",
     viewProfile: "Xem hồ sơ",
 
     // Common buttons / actions
