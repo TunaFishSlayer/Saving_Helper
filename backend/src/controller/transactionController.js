@@ -1,6 +1,6 @@
 import TransactionService from "../services/TransactionService.js";
 import { parseReceiptImage } from "../services/ReceiptParserService.js";
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 
 
@@ -172,12 +172,45 @@ export const exportTransactions = async (req, res) => {
     });
 
     // Create workbook and worksheet
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Transactions");
+
+    // Add columns
+    worksheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Description", key: "description", width: 30 },
+      { header: "Category", key: "category", width: 20 },
+      { header: "Type", key: "type", width: 12 },
+      { header: "Amount (VND)", key: "amount", width: 18 }
+    ];
+
+    // Add rows
+    rows.forEach(row => {
+      worksheet.addRow({
+        date: row["Date"],
+        description: row["Description"],
+        category: row["Category"],
+        type: row["Type"],
+        amount: row["Amount (VND)"]
+      });
+    });
+
+    // Style header row to look modern and premium
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { name: "Segoe UI", bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF4F46E5" } // Indigo background matching UI theme
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 26;
+
+    // Apply currency formatting to Amount column
+    worksheet.getColumn(5).numFmt = '#,##0';
 
     // Write worksheet to buffer
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     // Send response with file attachment headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

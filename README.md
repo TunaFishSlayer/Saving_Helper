@@ -45,10 +45,10 @@ Acts as your central database gateway, authentication engine, and proxies OCR im
 cd backend
 
 # 2. Ensure dependencies are installed
-npm install
+pnpm install
 
 # 3. Start the development server (using nodemon)
-npm run dev
+pnpm run dev
 ```
 > 💡 **Gateway Config**: The Node API automatically routes receipt images to the python endpoint on port 8000 via Axios.
 
@@ -63,10 +63,10 @@ The user interface used to track finances and submit receipt scans.
 cd frontend
 
 # 2. Ensure dependencies are installed
-npm install
+pnpm install
 
 # 3. Start the React application
-npm run dev
+pnpm run dev
 ```
 
 ---
@@ -100,6 +100,6 @@ Ensure your local environments have the following settings:
 * **`backend/.env`**:
   ```env
   PORT=5000
-  DATABASE_URL=your_postgresql_connection_string
+  DATABASE_URL=file:./prisma/dev.db
   GROQ_API_KEY=your_gsk_key_here
   ```
