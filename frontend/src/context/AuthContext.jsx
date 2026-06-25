@@ -3,7 +3,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 import { STORAGE_KEYS } from '../utils/constants';
-import { generateUUID } from '../services/localDb';
+import { generateUUID, seedDefaultCategories } from '../services/localDb';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (authMode === 'offline') {
       setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
+      seedDefaultCategories();
       setLoading(false);
     } else if (token) {
       fetchProfile();
@@ -52,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     setAuthMode('cloud');
     setToken(newToken);
     setUser(userData);
+    seedDefaultCategories();
   };
 
   const loginGuest = () => {
@@ -60,6 +62,7 @@ export const AuthProvider = ({ children }) => {
     setAuthMode('offline');
     setToken(null);
     setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
+    seedDefaultCategories();
   };
 
   const logout = () => {

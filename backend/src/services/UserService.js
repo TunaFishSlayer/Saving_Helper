@@ -3,28 +3,6 @@ import { prisma } from "../config/db.js";
 import { generateResetToken, verifyResetCode } from "../utils/resetCodeGen.js";
 
 class UserService {
-    static async seedDefaultCategories(userId) {
-        const defaultCategories = [
-            { name: "Food & Dining", type: "expense", description: "Groceries, restaurants, fast food" },
-            { name: "Housing", type: "expense", description: "Rent, mortgage, home maintenance" },
-            { name: "Transportation", type: "expense", description: "Gas, public transit, car maintenance" },
-            { name: "Utilities", type: "expense", description: "Electricity, water, internet, phone" },
-            { name: "Entertainment", type: "expense", description: "Movies, games, subscriptions" },
-            { name: "Shopping", type: "expense", description: "Clothing, electronics, personal items" },
-            { name: "Salary", type: "income", description: "Primary job income" },
-            { name: "Side Hustle", type: "income", description: "Freelance or part-time work" },
-            { name: "Gifts", type: "income", description: "Gifts and bonuses" }
-        ];
-
-        for (const cat of defaultCategories) {
-            await prisma.category.upsert({
-                where: { userId_name: { userId, name: cat.name } },
-                update: {},
-                create: { ...cat, userId }
-            });
-        }
-    }
-
     static async registerUser({ email, password, name }) {
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
@@ -40,8 +18,6 @@ class UserService {
                 provider: 'local'
             }
         });
-        
-        await this.seedDefaultCategories(newUser.id);
 
         const { passwordHash: ph, ...publicUser } = newUser;
         return publicUser;
@@ -83,7 +59,6 @@ class UserService {
                     provider: 'google'
                 }
             });
-            await this.seedDefaultCategories(user.id);
         }
         
         const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;

@@ -189,6 +189,34 @@ router.get("/summary/monthly", getMonthlySummary);
 router.get("/summary/category", getExpenseByCategory);
 
 router.get("/export", exportTransactions);
+router.post("/export", exportTransactions);
+
+/**
+ * @swagger
+ * /api/transactions/scan-receipt:
+ *   post:
+ *     summary: Scan a receipt image and get structured JSON
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               receipt:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Successfully scanned receipt
+ *       400:
+ *         description: No file uploaded
+ *       500:
+ *         description: Internal server error during OCR
+ */
+router.post("/scan-receipt", upload.single("receipt"), scanReceipt);
 
 // Single transaction operations
 /**
@@ -276,31 +304,6 @@ router.put("/:id", validateUpdateTransaction, updateTransaction);
  */
 router.delete("/:id", deleteTransaction);
 
-/**
- * @swagger
- * /api/transactions/scan-receipt:
- *   post:
- *     summary: Scan a receipt image and get structured JSON
- *     tags: [Transactions]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               receipt:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Successfully scanned receipt
- *       400:
- *         description: No file uploaded
- *       500:
- *         description: Internal server error during OCR
- */
-router.post("/scan-receipt", upload.single("receipt"), scanReceipt);
+// (scan-receipt moved above /:id to avoid Express route shadowing)
 
 export default router;

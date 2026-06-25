@@ -1,25 +1,38 @@
 // src/pages/Transaction.jsx
 
-import { useState, useEffect } from 'react';
-import { Plus, X, Filter, DollarSign, Edit2, Camera, Loader, Download } from 'lucide-react'; 
+import { useState, useEffect, useRef } from 'react';
+import { Plus, X, Filter, DollarSign, Edit2, Camera, Loader, Download, Timer } from 'lucide-react'; 
 import transactionService from '../services/transactionService';
 import categoryService from '../services/categoryService';
-import { formatCurrency } from '../utils/constants';
 import toast from 'react-hot-toast';
 import FormattedAmountInput from '../components/FormattedAmountInput';
+import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Transaction = () => {
+  const { t } = useLanguage();
+  const { currency, formatCurrency } = useCurrency();
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanElapsed, setScanElapsed] = useState(0);   // seconds elapsed during OCR
+  const [lastScanTime, setLastScanTime] = useState(null); // ms for the last finished scan
+  const scanTimerRef = useRef(null);
+  const scanStartRef = useRef(null);   // holds Date.now() at scan start
   const [fabOpen, setFabOpen] = useState(false);
   
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
   const [currentTransactionId, setCurrentTransactionId] = useState(null);
+
+  // Delete Confirmation State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
 
   const [filters, setFilters] = useState({
     type: '',
@@ -72,51 +85,114 @@ const Transaction = () => {
     if (!file) return;
 
     setError('');
+    setScanElapsed(0);
+    setLastScanTime(null);
+    const scanStart = Date.now();
+    scanStartRef.current = scanStart;
+    // Tick every 100 ms for a smooth counter
+    scanTimerRef.current = setInterval(() => {
+      setScanElapsed(((Date.now() - scanStart) / 1000));
+    }, 100);
     // Show a loading state in user toast notification
-    const toastId = toast.loading('AI is reading your receipt... (takes about 2-4 seconds)');
+    const toastId = toast.loading(t('toastScanLoading'));
     setScanning(true);
 
     try {
-      const response = await transactionService.scanReceipt(file);
+      const response = await transactionService.scanReceipt(file, categories.map(c => c.name));
       
       // Safe mapping of either raw response or enveloped response.data
       const ocr = response.data || response;
 
       if (ocr) {
-        toast.success('Receipt parsed by AI successfully!', { id: toastId });
+        toast.success(t('toastScanSuccess'), { id: toastId });
         
         // Step 1: Open standard creation modal
         setShowModal(true);
         
-        // Step 2: Populate existing react state fields
+        // Parse OCR date — may arrive as dd/mm/yyyy (Vietnamese format)
+        let parsedDate = new Date().toISOString().split('T')[0];
+        if (ocr.date) {
+          const ddmmyyyy = ocr.date.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (ddmmyyyy) {
+            const [, d, m, y] = ddmmyyyy;
+            parsedDate = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+          } else {
+            const dt = new Date(ocr.date);
+            if (!isNaN(dt)) parsedDate = dt.toISOString().split('T')[0];
+          }
+        }
+
+        const ocrVnd = ocr.total_amount || ocr.amount || '';
+        const displayOcrAmount = currency === 'USD' && ocrVnd ? Math.round((ocrVnd / 25400) * 100) / 100 : ocrVnd;
+
+        // Step 2: Populate form fields
         setFormData({
-          amount: ocr.total_amount || ocr.amount || '',
+          amount: displayOcrAmount.toString(),
           type: 'expense',
           description: ocr.store_name ? `AI Scan: ${ocr.store_name}` : 'AI Receipt Scan',
-          date: ocr.date ? new Date(ocr.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          date: parsedDate,
           categoryId: ''
         });
 
-        // Step 3: Perform intelligent category string fuzzy mapping
-        const candidateTag = ocr.suggested_category || ocr.bill_type || '';
-        if (candidateTag && categories.length > 0) {
-          const matchedCat = categories.find(cat => 
-            cat.name.toLowerCase().includes(candidateTag.toLowerCase()) ||
-            candidateTag.toLowerCase().includes(cat.name.toLowerCase())
-          );
-          if (matchedCat) {
-            setFormData(prev => ({ ...prev, categoryId: matchedCat.id }));
-            toast.success(`Auto-matched category: ${matchedCat.name}`);
+        // Step 3: bill_type → Vietnamese category keyword map
+        const BILL_TYPE_MAP = {
+          SUPERMARKET:   ['siêu thị', 'tạp hóa', 'supermarket', 'groceries', 'shopping', 'dining', 'food'],
+          RESTAURANT:    ['ăn uống', 'restaurant', 'dining', 'food', 'cuisine'],
+          CAFE:          ['ăn uống', 'cafe', 'coffee', 'beverage', 'drink', 'tea'],
+          PHARMACY:      ['sức khỏe', 'pharmacy', 'medicine', 'health', 'medical', 'thuốc'],
+          GAS_STATION:   ['di chuyển', 'gas', 'fuel', 'xăng', 'petrol'],
+          FASHION:       ['mua sắm', 'fashion', 'clothing', 'clothes', 'shopping', 'apparel'],
+          HOSPITAL:      ['sức khỏe', 'hospital', 'medical', 'clinic', 'health', 'bệnh viện'],
+          EDUCATION:     ['giáo dục', 'education', 'school', 'tuition', 'học', 'course'],
+          TRANSPORT:     ['di chuyển', 'transport', 'taxi', 'grab', 'travel', 'ride'],
+          UTILITY:       ['hóa đơn', 'utility', 'utilities', 'electricity', 'water', 'internet', 'phone'],
+          ENTERTAINMENT: ['giải trí', 'entertainment', 'movie', 'cinema', 'game', 'music'],
+          HOTEL:         ['du lịch', 'hotel', 'travel', 'stay', 'homestay', 'resort'],
+          ONLINE_SHOP:   ['mua sắm', 'online', 'shopping', 'shopee', 'lazada', 'tiktok'],
+        };
+
+        const billType = (ocr.bill_type || '').toUpperCase();
+        const keywords = BILL_TYPE_MAP[billType] || [];
+        const candidateTag = ocr.suggested_category || '';
+
+        if (categories.length > 0) {
+          let matchedCat = null;
+          
+          // First attempt: Exact/Case-insensitive match on the LLM selected category name
+          if (ocr.category) {
+            matchedCat = categories.find(cat => cat.name.toLowerCase() === ocr.category.toLowerCase());
+          }
+          
+          // Fallback: Legacy keyword matching from bill type and tags
+          if (!matchedCat) {
+            matchedCat = categories.find(cat => {
+              const catLower = cat.name.toLowerCase();
+              if (keywords.some(kw => catLower.includes(kw))) return true;
+              if (candidateTag) {
+                return catLower.includes(candidateTag.toLowerCase()) ||
+                       candidateTag.toLowerCase().includes(catLower);
+              }
+              return false;
+            });
           }
 
+          if (matchedCat) {
+            setFormData(prev => ({ ...prev, categoryId: matchedCat.id }));
+            toast.success(`${t('toastScanCategoryMatch')}: ${matchedCat.name}`);
+          }
         }
       } else {
         throw new Error('Invalid OCR result');
       }
     } catch (err) {
-      toast.error(err.message || 'AI Scan failed. Please enter manually.', { id: toastId });
+      toast.error(err.message || t('toastScanError'), { id: toastId });
       console.error('React OCR Upload Error:', err);
     } finally {
+      clearInterval(scanTimerRef.current);
+      const elapsed = scanStartRef.current
+        ? Math.round((Date.now() - scanStartRef.current) / 100) / 10
+        : 0;
+      setLastScanTime(elapsed);
       setScanning(false);
       e.target.value = null; // Reset input selector
     }
@@ -137,8 +213,9 @@ const Transaction = () => {
   };
 
   const handleEdit = (transaction) => {
+    const displayAmount = currency === 'USD' ? Math.round((transaction.amount / 25400) * 100) / 100 : transaction.amount;
     setFormData({
-      amount: transaction.amount,
+      amount: displayAmount.toString(),
       type: transaction.type,
       categoryId: transaction.categoryId,
       description: transaction.description || '',
@@ -156,9 +233,11 @@ const Transaction = () => {
     setError('');
 
     try {
+      const numericAmount = parseFloat(formData.amount);
+      const dbAmount = currency === 'USD' ? Math.round(numericAmount * 25400) : numericAmount;
       const payload = {
         ...formData,
-        amount: parseFloat(formData.amount)
+        amount: dbAmount
       };
 
       if (isEditing) {
@@ -197,26 +276,88 @@ const Transaction = () => {
       
       toast.success('Transactions exported to Excel!');
     } catch (err) {
-      console.error('Failed to export transactions:', err);
-      toast.error('Failed to export transactions to Excel');
+      console.warn('Backend export failed, falling back to local CSV export:', err);
+      try {
+        // Fallback: Generate CSV locally from IndexedDB
+        const data = await transactionService.getTransactions(filters);
+        const txs = data.data || [];
+        
+        if (txs.length === 0) {
+          toast.error('No transactions to export!');
+          return;
+        }
+
+        // CSV Header with BOM for correct Vietnamese character display in Excel
+        const headers = ["Date", "Description", "Category", "Type", "Amount (VND)"];
+        const csvRows = [headers.join(",")];
+
+        txs.forEach(t => {
+          const d = new Date(t.date);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = String(d.getFullYear()).slice(-2);
+          const dateStr = `${day}/${month}/${year}`;
+          
+          const desc = (t.description || '').replace(/"/g, '""');
+          const cat = getCategoryName(t.categoryId).replace(/"/g, '""');
+          const type = t.type === 'income' ? 'Income' : 'Expense';
+          
+          csvRows.push([
+            `"${dateStr}"`,
+            `"${desc}"`,
+            `"${cat}"`,
+            `"${type}"`,
+            t.amount
+          ].join(","));
+        });
+
+        const csvContent = csvRows.join("\n");
+        // UTF-8 BOM prefix
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `transactions_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('Transactions exported to CSV (Offline)!');
+      } catch (fallbackErr) {
+        console.error('Fallback export failed:', fallbackErr);
+        toast.error('Failed to export transactions');
+      }
     } finally {
       setExporting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this transaction?')) return;
+  const triggerDeleteConfirm = (id) => {
+    setTransactionToDelete(id);
+    setShowDeleteModal(true);
+  };
 
+  const handleDelete = async () => {
+    if (!transactionToDelete) return;
+    setDeleting(true);
     try {
-      await transactionService.deleteTransaction(id);
+      await transactionService.deleteTransaction(transactionToDelete);
       toast.success('Transaction deleted successfully!');
+      setShowDeleteModal(false);
+      setTransactionToDelete(null);
       fetchTransactions();
     } catch (err) {
       const error = err.message || 'Failed to delete transaction';
       setError(error);
       toast.error(error);
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -229,14 +370,14 @@ const Transaction = () => {
   return (
     <div className="transactions-page">
       <div className="page-header">
-        <h1 className="page-title">Transactions</h1>
+        <h1 className="page-title">{t('transactionsTitle')}</h1>
         <div className="header-actions">
           <button
             className="button button-secondary"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter size={20} />
-            Filters
+            {t('filtersBtn')}
           </button>
           <input
             type="file"
@@ -261,7 +402,7 @@ const Transaction = () => {
             onClick={() => document.getElementById('scan-receipt-file-input').click()}
           >
             {scanning ? <Loader className="animate-spin" size={20} /> : <Camera size={20} />}
-            {scanning ? 'AI Scanning...' : 'AI Scan Receipt'}
+            {scanning ? t('aiScanningBtn') : t('aiScanBtn')}
           </button>
           <button 
             className="button button-secondary"
@@ -270,14 +411,14 @@ const Transaction = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             {exporting ? <Loader className="animate-spin" size={20} /> : <Download size={20} />}
-            {exporting ? 'Export Excel' : 'Export Excel'}
+            {exporting ? t('loading') : t('exportExcelBtn')}
           </button>
           <button 
             className="button button-primary" 
             onClick={() => { resetForm(); setShowModal(true); }}
           >
             <Plus size={20} />
-            Add Transaction
+            {t('addTransactionBtn')}
           </button>
         </div>
       </div>
@@ -288,26 +429,26 @@ const Transaction = () => {
         <div className="card filters-card">
           <div className="filters-grid">
             <div className="form-group">
-              <label>Type</label>
+              <label>{t('filterTypeLabel')}</label>
               <select
                 className="input"
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
               >
-                <option value="">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
+                <option value="">{t('filterAllTypes')}</option>
+                <option value="income">{t('filterIncome')}</option>
+                <option value="expense">{t('filterExpense')}</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label>Category</label>
+              <label>{t('filterCategory')}</label>
               <select
                 className="input"
                 value={filters.categoryId}
                 onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
               >
-                <option value="">All Categories</option>
+                <option value="">{t('filterAllCategories')}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -318,7 +459,7 @@ const Transaction = () => {
             </div>
 
             <div className="form-group">
-              <label>Start Date</label>
+              <label>{t('filterStartDate')}</label>
               <input
                 type="date"
                 className="input"
@@ -328,7 +469,7 @@ const Transaction = () => {
             </div>
 
             <div className="form-group">
-              <label>End Date</label>
+              <label>{t('filterEndDate')}</label>
               <input
                 type="date"
                 className="input"
@@ -353,12 +494,12 @@ const Transaction = () => {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Actions</th>
+                    <th>{t('tableDate')}</th>
+                    <th>{t('tableDescription')}</th>
+                    <th>{t('tableCategory')}</th>
+                    <th>{t('tableType')}</th>
+                    <th>{t('tableAmount')}</th>
+                    <th>{t('tableActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,7 +517,7 @@ const Transaction = () => {
                       <td>{getCategoryName(transaction.categoryId)}</td>
                       <td>
                         <span className={`badge badge-${transaction.type}`}>
-                          {transaction.type.toUpperCase()}
+                          {transaction.type === 'income' ? t('filterIncome') : t('filterExpense')}
                         </span>
                       </td>
                       <td className={`amount-${transaction.type}`}>
@@ -393,7 +534,7 @@ const Transaction = () => {
                           </button>
                           <button
                             className="icon-button delete"
-                            onClick={() => handleDelete(transaction.id)}
+                            onClick={() => triggerDeleteConfirm(transaction.id)}
                             title="Delete Transaction"
                           >
                             <X size={18} />
@@ -441,7 +582,7 @@ const Transaction = () => {
                       </button>
                       <button
                         className="card-action-btn delete"
-                        onClick={() => handleDelete(transaction.id)}
+                        onClick={() => triggerDeleteConfirm(transaction.id)}
                       >
                         <X size={14} />
                         <span>Delete</span>
@@ -455,8 +596,8 @@ const Transaction = () => {
         ) : (
           <div className="empty-state">
             <DollarSign size={64} />
-            <h3>No transactions found</h3>
-            <p>Add your first transaction to get started</p>
+            <h3>{t('noTransactionsFound')}</h3>
+            <p>{t('noTransactionsDesc')}</p>
           </div>
         )}
       </div>
@@ -466,7 +607,7 @@ const Transaction = () => {
         <div className="modal-overlay" onClick={resetForm}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{isEditing ? 'Edit Transaction' : 'Add Transaction'}</h2>
+              <h2>{isEditing ? t('editTransactionModalTitle') : t('addTransactionModalTitle')}</h2>
               <button className="close-button" onClick={resetForm}>
                 <X size={24} />
               </button>
@@ -480,27 +621,27 @@ const Transaction = () => {
 
             <form onSubmit={handleSubmit} className="form">
               <div className="form-group">
-                <label>Type</label>
+                <label>{t('formTypeLabel')}</label>
                 <select
                   className="input"
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value, categoryId: '' })}
                   required
                 >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
+                  <option value="expense">{t('filterExpense')}</option>
+                  <option value="income">{t('filterIncome')}</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Category</label>
+                <label>{t('formCategoryLabel')}</label>
                 <select
                   className="input"
                   value={formData.categoryId}
                   onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                   required
                 >
-                  <option value="">Select Category</option>
+                  <option value="">{t('formSelectCategory')}</option>
                   {availableCategories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
@@ -511,10 +652,9 @@ const Transaction = () => {
               </div>
 
               <div className="form-group">
-                <label>Amount</label>
+                <label>{t('formAmountLabel')} ({currency})</label>
                 <FormattedAmountInput
                   className="input"
-                  placeholder="e.g. 1.000.000"
                   value={formData.amount}
                   onChange={(val) => setFormData({ ...formData, amount: val })}
                   required
@@ -522,7 +662,7 @@ const Transaction = () => {
               </div>
 
               <div className="form-group">
-                <label>Description</label>
+                <label>{t('formDescriptionLabel')}</label>
                 <input
                   type="text"
                   className="input"
@@ -532,7 +672,7 @@ const Transaction = () => {
               </div>
 
               <div className="form-group">
-                <label>Date</label>
+                <label>{t('formDateLabel')}</label>
                 <input
                   type="date"
                   className="input"
@@ -544,14 +684,14 @@ const Transaction = () => {
 
               <div className="button-group">
                 <button type="submit" className="button button-primary">
-                  {isEditing ? 'Update Transaction' : 'Add Transaction'}
+                  {isEditing ? t('updateTransactionBtn') : t('addTransactionBtn')}
                 </button>
                 <button
                   type="button"
                   className="button button-secondary"
                   onClick={resetForm}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </form>
@@ -571,7 +711,7 @@ const Transaction = () => {
             }}
           >
             <Plus size={16} />
-            <span>Add Manual</span>
+            <span>{t('addManualBtn')}</span>
           </button>
           <button 
             className="fab-option-btn" 
@@ -582,7 +722,7 @@ const Transaction = () => {
             }}
           >
             {scanning ? <Loader className="animate-spin" size={16} /> : <Camera size={16} />}
-            <span>{scanning ? 'Scanning...' : 'AI Scan Receipt'}</span>
+            <span>{scanning ? t('aiScanningBtn') : t('aiScanBtn')}</span>
           </button>
         </div>
         <button 
@@ -593,6 +733,43 @@ const Transaction = () => {
           <Plus size={24} />
         </button>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => { setShowDeleteModal(false); setTransactionToDelete(null); }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('confirmDeleteTitle')}</h2>
+              <button className="close-button" onClick={() => { setShowDeleteModal(false); setTransactionToDelete(null); }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '24px', color: 'var(--text-light)', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'left' }}>
+              {t('confirmDeleteTransactionText')}
+            </div>
+
+            <div className="button-group" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => { setShowDeleteModal(false); setTransactionToDelete(null); }}
+                disabled={deleting}
+              >
+                {t('keepBtn')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? t('loading') : t('deleteBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

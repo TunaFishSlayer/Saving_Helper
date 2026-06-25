@@ -10,7 +10,14 @@ class SubscriptionService {
   }
 
   async getSubscriptions() {
-    return await localDb.subscriptions.toArray();
+    const subs = await localDb.subscriptions.toArray();
+    const cats = await localDb.categories.toArray();
+    const catMap = {};
+    cats.forEach(c => { catMap[c.id] = c; });
+    return subs.map(s => ({
+      ...s,
+      category: catMap[s.categoryId] || null
+    }));
   }
 
   async createSubscription(subscriptionData) {

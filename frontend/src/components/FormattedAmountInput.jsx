@@ -1,18 +1,72 @@
 import React, { useState } from 'react';
-import { formatInputAmountWithDots } from '../utils/constants';
+import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const FormattedAmountInput = ({ value, onChange, placeholder, className, required, autoFocus, ...props }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { currency } = useCurrency();
+  const { t } = useLanguage();
+  const EXCHANGE_RATE = 25400;
+
+  const getPlaceholderText = () => {
+    if (placeholder) {
+      if (currency === 'USD') {
+        let clean = placeholder;
+        if (clean.includes('1.000.000')) clean = clean.replace('1.000.000', '100');
+        if (clean.includes('260.000')) clean = clean.replace('260.000', '10');
+        if (clean.includes('30.000.000')) clean = clean.replace('30.000.000', '1,000');
+        return clean;
+      }
+      return placeholder;
+    }
+    return currency === 'USD' ? t('usdPlaceholder') : t('vndPlaceholder');
+  };
 
   const handleChange = (e) => {
-    const raw = e.target.value;
+    // Keep only digits to ensure clean integer values
+    const raw = e.target.value.replace(/\D/g, '');
     onChange(raw);
   };
 
-  const formatted = formatInputAmountWithDots(value);
+  // Helper to format the blurred value
+  const getBlurredValue = () => {
+    if (value === null || value === undefined || value === '') return '';
+    const clean = value.toString().replace(/\D/g, '');
+    if (currency === 'USD') {
+      // Format USD: commas as thousand separators
+      return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    } else {
+      // Format VND: dots as thousand separators
+      return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+  };
+
+  const formatted = getBlurredValue();
+
+  // When focused: show raw number (type="number") for native selection & editing
+  // When blurred: show formatted string (type="text") for clean display
+  const displayValue = isFocused ? value : formatted;
+  const inputType = isFocused ? 'number' : 'text';
+
+  // Real-time helper conversion as they type
+  const getHelperText = () => {
+    if (!value) return '';
+    const numeric = parseFloat(value);
+    if (isNaN(numeric)) return '';
+
+    if (currency === 'USD') {
+      // Input is in USD, helper shows VND conversion
+      const vndVal = Math.round(numeric * EXCHANGE_RATE);
+      return `≈ ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(vndVal)}`;
+    } else {
+      // Input is in VND, helper shows USD conversion
+      const usdVal = numeric / EXCHANGE_RATE;
+      return `≈ ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdVal)}`;
+    }
+  };
 
   return (
-    <div style={{ position: 'relative', width: '100%', backgroundColor: '#fff', borderRadius: '8px' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         .no-spinner::-webkit-outer-spin-button,
         .no-spinner::-webkit-inner-spin-button {
@@ -22,73 +76,51 @@ const FormattedAmountInput = ({ value, onChange, placeholder, className, require
         .no-spinner {
           -moz-appearance: textfield;
         }
-        @keyframes blink {
-          50% { opacity: 0; }
+        @keyframes fadeInHelper {
+          from { opacity: 0; transform: translateY(-2px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .custom-caret {
-          display: inline-block;
-          width: 1.5px;
-          height: 18px;
-          background-color: var(--text, #374151);
-          margin-left: 1px;
-          animation: blink 1.1s step-end infinite;
-          vertical-align: middle;
+        .vnd-helper-text {
+          animation: fadeInHelper 0.15s ease-out forwards;
         }
       `}</style>
       <input
-        type="number"
-        value={value}
+        type={inputType}
+        value={displayValue}
         onChange={handleChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        placeholder=""
+        placeholder={isFocused ? "" : getPlaceholderText()}
         className={`${className} no-spinner`}
         required={required}
         autoFocus={autoFocus}
         style={{
-          color: 'transparent',
-          caretColor: 'transparent',
-          background: 'transparent',
-          position: 'relative',
-          zIndex: 2,
+          width: '100%',
+          boxSizing: 'border-box'
         }}
         {...props}
       />
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 1,
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '10px 12px',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          lineHeight: '1.4',
-          color: value ? 'var(--text)' : '#9ca3af',
-        }}
-      >
-        {value ? (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span>{formatted}</span>
-            {isFocused && <span className="custom-caret" />}
-          </div>
-        ) : (
-          <>
-            {isFocused ? (
-              <span className="custom-caret" />
-            ) : (
-              placeholder
-            )}
-          </>
-        )}
-      </div>
+      {isFocused && value && (
+        <span 
+          className="vnd-helper-text"
+          style={{ 
+            fontSize: '12.5px', 
+            color: '#4f46e5', // var(--primary-dark)
+            fontWeight: '600', 
+            marginTop: '6px',
+            textAlign: 'right',
+            alignSelf: 'flex-end',
+            display: 'block',
+            letterSpacing: '0.02em'
+          }}
+        >
+          {getHelperText()}
+        </span>
+      )}
     </div>
   );
 };
 
 export default FormattedAmountInput;
+
+

@@ -6,7 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { locale, toggleLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { logout, isGuest } = useAuth();
 
   const navItems = [
@@ -52,28 +52,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border)' }}>
-          {/* Language Selector */}
-          <div style={{ marginBottom: '1rem', width: '100%' }}>
-            <select
-              value={locale}
-              onChange={(e) => toggleLanguage(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#fff',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                outline: 'none',
-                color: '#334155',
-              }}
-            >
-              <option value="vi">Tiếng Việt</option>
-              <option value="en">English</option>
-            </select>
-          </div>
 
           {isGuest ? (
             <button

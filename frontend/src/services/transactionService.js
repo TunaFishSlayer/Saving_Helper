@@ -24,6 +24,22 @@ class TransactionService {
     if (params.categoryId) {
       txs = txs.filter(t => t.categoryId === params.categoryId);
     }
+    // Filter by startDate if requested
+    if (params.startDate) {
+      const start = new Date(params.startDate);
+      txs = txs.filter(t => new Date(t.date) >= start);
+    }
+    // Filter by endDate if requested
+    if (params.endDate) {
+      const end = new Date(params.endDate);
+      end.setHours(23, 59, 59, 999);
+      txs = txs.filter(t => new Date(t.date) <= end);
+    }
+
+    // Apply limit if requested
+    if (params.limit) {
+      txs = txs.slice(0, parseInt(params.limit));
+    }
 
     return { data: txs };
   }
@@ -119,7 +135,10 @@ class TransactionService {
     const income = monthlyTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const expense = monthlyTxs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-    return { income, expense };
+    return [
+      { id: 'income', total: income },
+      { id: 'expense', total: expense }
+    ];
   }
 
   async getExpenseByCategory() {
@@ -133,21 +152,16 @@ class TransactionService {
       groups[catId] = (groups[catId] || 0) + Number(exp.amount || 0);
     }
 
-    // Load categories to map names
-    const cats = await localDb.categories.toArray();
-    const catMap = {};
-    cats.forEach(c => { catMap[c.id] = c.name; });
-
-    return Object.entries(groups).map(([catId, amount]) => ({
-      categoryId: catId,
-      categoryName: catMap[catId] || 'Unknown',
-      amount
+    return Object.entries(groups).map(([catId, total]) => ({
+      id: catId,
+      total
     }));
   }
 
-  async scanReceipt(file) {
+  async scanReceipt(file, categoriesList = []) {
     const formData = new FormData();
     formData.append('receipt', file);
+    formData.append('categories', JSON.stringify(categoriesList));
     return await api.post('/transactions/scan-receipt', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
@@ -156,17 +170,22 @@ class TransactionService {
   }
 
   async exportTransactions(params = {}) {
-    // Export still hits the server for generation
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, value);
-      }
-    });
+    // 1. Get filtered transactions from local IndexedDB
+    const { data: txs } = await this.getTransactions(params);
+    
+    // 2. Fetch categories to map categoryId -> categoryName
+    const cats = await localDb.categories.toArray();
+    const catMap = {};
+    cats.forEach(c => { catMap[c.id] = c.name; });
 
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `/transactions/export?${queryString}` : '/transactions/export';
-    return await api.get(endpoint, { isBlob: true });
+    // 3. Map categoryName into transactions
+    const mappedTxs = txs.map(t => ({
+      ...t,
+      categoryName: catMap[t.categoryId] || 'Unknown'
+    }));
+
+    // 4. Send POST request to backend with transactions payload
+    return await api.post('/transactions/export', { transactions: mappedTxs }, { isBlob: true });
   }
 }
 

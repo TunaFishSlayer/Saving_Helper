@@ -135,7 +135,8 @@ export const scanReceipt = async (req, res) => {
       return res.status(400).json({ message: "No receipt file uploaded" });
     }
 
-    const parsedData = await parseReceiptImage(req.file.path);
+    const categories = req.body.categories;
+    const parsedData = await parseReceiptImage(req.file.path, categories);
 
     res.status(200).json({
       message: "Receipt scanned successfully",
@@ -148,13 +149,18 @@ export const scanReceipt = async (req, res) => {
 
 export const exportTransactions = async (req, res) => {
   try {
-    const transactions = await TransactionService.getUserTransactionsForExport({
-      userId: req.user.userId,
-      type: req.query.type,
-      categoryId: req.query.categoryId,
-      startDate: req.query.startDate,
-      endDate: req.query.endDate
-    });
+    let transactions;
+    if (req.body && Array.isArray(req.body.transactions)) {
+      transactions = req.body.transactions;
+    } else {
+      transactions = await TransactionService.getUserTransactionsForExport({
+        userId: req.user.userId,
+        type: req.query.type,
+        categoryId: req.query.categoryId,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate
+      });
+    }
 
     // Format data into rows
     const rows = transactions.map(t => {
@@ -162,10 +168,20 @@ export const exportTransactions = async (req, res) => {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = String(d.getFullYear()).slice(-2);
+      
+      let categoryName = "Unknown";
+      if (t.category && typeof t.category === 'object' && t.category.name) {
+        categoryName = t.category.name;
+      } else if (t.categoryName) {
+        categoryName = t.categoryName;
+      } else if (typeof t.category === 'string') {
+        categoryName = t.category;
+      }
+
       return {
         "Date": `${day}/${month}/${year}`,
         "Description": t.description || "",
-        "Category": t.category?.name || "Unknown",
+        "Category": categoryName,
         "Type": t.type === 'income' ? 'Income' : 'Expense',
         "Amount (VND)": t.amount
       };

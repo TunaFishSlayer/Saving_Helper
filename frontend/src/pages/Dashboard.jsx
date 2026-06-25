@@ -10,9 +10,30 @@ import { TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react';
 import transactionService from '../services/transactionService';
 import budgetService from '../services/budgetService';
 import categoryService from '../services/categoryService';
-import { CHART_COLORS, formatCurrency } from '../utils/constants';
+import { CHART_COLORS } from '../utils/constants';
+import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Dashboard = () => {
+  const { t } = useLanguage();
+  const { currency, formatCurrency } = useCurrency();
+
+  const formatYAxisMillion = (value) => {
+    if (currency === 'USD') {
+      const usdVal = value / 25400;
+      return usdVal >= 1000 ? `$${(usdVal / 1000).toFixed(1).replace('.0', '')}k` : `$${Math.round(usdVal)}`;
+    }
+    return `${(value / 1000000).toFixed(1).replace('.0', '')}M`;
+  };
+
+  const formatYAxisThousand = (value) => {
+    if (currency === 'USD') {
+      const usdVal = value / 25400;
+      return `$${Math.round(usdVal)}`;
+    }
+    return `${(value / 1000).toFixed(0)}k`;
+  };
+
   const [stats, setStats] = useState({
     income: 0,
     expense: 0,
@@ -24,6 +45,8 @@ const Dashboard = () => {
   const [monthlyData, setMonthlyData] = useState([]);
   const [trendData, setTrendData] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [budgetData, setBudgetData] = useState([]);
+  const [dailySpendingData, setDailySpendingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('6months');
 
@@ -31,17 +54,47 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [selectedPeriod]);
 
+  const generateDailySpendingData = (expenses) => {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const data = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      data.push({
+        day: `${i}/${now.getMonth() + 1}`,
+        amount: 0
+      });
+    }
+    expenses.forEach(t => {
+      const d = new Date(t.date);
+      const dayNum = d.getDate();
+      if (dayNum >= 1 && dayNum <= daysInMonth) {
+        data[dayNum - 1].amount += Number(t.amount || 0);
+      }
+    });
+    return data;
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      const [incomeRes, expenseRes, transactionsRes, alertsRes, categoryRes, categoriesRes] = await Promise.all([
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      const [incomeRes, expenseRes, transactionsRes, alertsRes, categoryRes, categoriesRes, budgetsRes, monthExpensesRes] = await Promise.all([
         transactionService.getTotalByType('income'),
         transactionService.getTotalByType('expense'),
         transactionService.getTransactions({ limit: 5, sortBy: 'date', order: 'desc' }),
         budgetService.getBudgetAlerts(),
         transactionService.getExpenseByCategory(),
-        categoryService.getCategories()
+        categoryService.getCategories(),
+        budgetService.getBudgetOverview(),
+        transactionService.getTransactions({
+          type: 'expense',
+          startDate: startOfMonth,
+          endDate: endOfMonth
+        })
       ]);
 
       setStats({
@@ -65,11 +118,23 @@ const Dashboard = () => {
 
       setCategoryData(mappedCategoryData);
 
+      // Map budget overview data
+      const budgetsList = budgetsRes.data?.budgets || [];
+      const budgetChartData = budgetsList.map(item => ({
+        category: item.budget.categoryName,
+        limit: item.budget.amount,
+        spent: item.spending.totalSpent
+      }));
+      setBudgetData(budgetChartData);
+
+      // Map daily spending data
+      const dailyData = generateDailySpendingData(monthExpensesRes.data || []);
+      setDailySpendingData(dailyData);
+
       // Generate trend data for last 6 months
       await generateTrendData();
 
       // Monthly comparison for current month
-      const now = new Date();
       const monthlyRes = await transactionService.getMonthlySummary(
         now.getFullYear(), 
         now.getMonth() + 1
@@ -165,7 +230,7 @@ const Dashboard = () => {
           ))}
           {data.savingsRate !== undefined && (
             <p style={{ margin: '8px 0 0 0', color: '#10b981', fontWeight: 600, borderTop: '1px solid #eee', paddingTop: '6px' }}>
-              Savings Rate: {data.savingsRate}%
+              {t('savingsRate')}: {data.savingsRate}%
             </p>
           )}
         </div>
@@ -178,7 +243,7 @@ const Dashboard = () => {
     return (
       <div className="loader-container">
         <div className="loader"></div>
-        <p>Loading dashboard...</p>
+        <p>{t('dashboardLoading')}</p>
       </div>
     );
   }
@@ -187,7 +252,7 @@ const Dashboard = () => {
     <div className="dashboard">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Financial Dashboard</h1>
+        <h1 className="page-title">{t('dashboardTitle')}</h1>
         
         <select 
           value={selectedPeriod}
@@ -195,10 +260,10 @@ const Dashboard = () => {
           className="input"
           style={{ width: 'auto', minWidth: '150px' }}
         >
-          <option value="1month">Last Month</option>
-          <option value="3months">Last 3 Months</option>
-          <option value="6months">Last 6 Months</option>
-          <option value="1year">Last Year</option>
+          <option value="1month">{t('periodLastMonth')}</option>
+          <option value="3months">{t('periodLast3Months')}</option>
+          <option value="6months">{t('periodLast6Months')}</option>
+          <option value="1year">{t('periodLastYear')}</option>
         </select>
       </div>
 
@@ -207,7 +272,7 @@ const Dashboard = () => {
         <div className="stat-card stat-income">
           <div className="stat-content">
             <div className="stat-info">
-              <p className="stat-label">Total Income</p>
+              <p className="stat-label">{t('statTotalIncome')}</p>
               <p className="stat-value">{formatCurrency(stats.income)}</p>
             </div>
             <div className="stat-icon">
@@ -219,7 +284,7 @@ const Dashboard = () => {
         <div className="stat-card stat-expense">
           <div className="stat-content">
             <div className="stat-info">
-              <p className="stat-label">Total Expense</p>
+              <p className="stat-label">{t('statTotalExpense')}</p>
               <p className="stat-value">{formatCurrency(stats.expense)}</p>
             </div>
             <div className="stat-icon">
@@ -231,7 +296,7 @@ const Dashboard = () => {
         <div className="stat-card stat-balance">
           <div className="stat-content">
             <div className="stat-info">
-              <p className="stat-label">Balance</p>
+              <p className="stat-label">{t('statBalance')}</p>
               <p className="stat-value">{formatCurrency(stats.balance)}</p>
             </div>
             <div className="stat-icon">
@@ -246,7 +311,7 @@ const Dashboard = () => {
         <div className="budget-alerts">
           <h2 className="section-title">
             <AlertCircle size={20} />
-            Budget Alerts
+            {t('budgetAlertsTitle')}
           </h2>
           <div className="alerts-list">
             {budgetAlerts.map((alert, index) => (
@@ -262,12 +327,12 @@ const Dashboard = () => {
       <div className="charts-container">
         {/* Income vs Expense Trend - Full Width */}
         <div className="card chart-full">
-          <h2 className="card-title">Income vs Expense Trend</h2>
+          <h2 className="card-title">{t('chartIncomeExpense')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="month" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" tickFormatter={(value) => `${(value/1000000).toFixed(0)}M`} />
+              <YAxis stroke="#6b7280" tickFormatter={formatYAxisMillion} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Line 
@@ -292,7 +357,7 @@ const Dashboard = () => {
 
         {/* Net Savings Rate Trend - Full Width */}
         <div className="card chart-full">
-          <h2 className="card-title">Net Savings Rate Trend</h2>
+          <h2 className="card-title">{t('chartSavingsRate')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={trendData}>
               <defs>
@@ -303,7 +368,7 @@ const Dashboard = () => {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="month" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" tickFormatter={(value) => `${(value/1000000).toFixed(0)}M`} />
+              <YAxis stroke="#6b7280" tickFormatter={formatYAxisMillion} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Area 
@@ -319,11 +384,46 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Two Charts Side by Side */}
+        {/* Daily Spending Timeline - Full Width */}
+        <div className="card chart-full">
+          <h2 className="card-title">{t('chartDailySpending')}</h2>
+          {dailySpendingData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={dailySpendingData}>
+                <defs>
+                  <linearGradient id="colorDailySpent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="day" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" tickFormatter={formatYAxisThousand} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Area 
+                  type="monotone" 
+                  dataKey="amount" 
+                  stroke="#f43f5e" 
+                  strokeWidth={2}
+                  fillOpacity={1} 
+                  fill="url(#colorDailySpent)" 
+                  name={t('spentLabel')}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="empty-state">
+              <p>{t('noExpenseData')}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Three Charts Side by Side in Grid */}
         <div className="dashboard-grid">
           {/* Expense by Category */}
           <div className="card">
-            <h2 className="card-title">Expenses by Category</h2>
+            <h2 className="card-title">{t('chartExpenseByCategory')}</h2>
             {categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -346,27 +446,49 @@ const Dashboard = () => {
               </ResponsiveContainer>
             ) : (
               <div className="empty-state">
-                <p>No expense data available</p>
+                <p>{t('noExpenseData')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Budget vs Actual Spending */}
+          <div className="card">
+            <h2 className="card-title">{t('chartBudgetVsActual')}</h2>
+            {budgetData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={budgetData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis dataKey="category" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" tickFormatter={formatYAxisMillion} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Bar dataKey="limit" fill="#6366f1" opacity={0.65} name={t('budgetLabel')} radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="spent" fill="#f43f5e" name={t('spentLabel')} radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-state">
+                <p>{t('noBudgets')}</p>
               </div>
             )}
           </div>
 
           {/* Monthly Comparison */}
           <div className="card">
-            <h2 className="card-title">This Month's Summary</h2>
+            <h2 className="card-title">{t('chartMonthlySummary')}</h2>
             {monthlyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" tickFormatter={(value) => `${(value/1000000).toFixed(0)}M`} />
+                  <YAxis stroke="#6b7280" tickFormatter={formatYAxisMillion} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="amount" fill="#6366f1" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="empty-state">
-                <p>No data for this month</p>
+                <p>{t('noMonthlyData')}</p>
               </div>
             )}
           </div>
@@ -375,7 +497,7 @@ const Dashboard = () => {
 
       {/* Recent Transactions */}
       <div className="card">
-        <h2 className="card-title">Recent Transactions</h2>
+        <h2 className="card-title">{t('recentTransactions')}</h2>
         {recentTransactions.length > 0 ? (
           <div className="transactions-list">
             {recentTransactions.map((transaction) => (
@@ -397,7 +519,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="empty-state">
-            <p>No transactions yet</p>
+            <p>{t('noTransactions')}</p>
           </div>
         )}
       </div>

@@ -2,19 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Plus, Target, X, Trash2, Loader } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import goalService from '../services/goalService';
-import { CHART_COLORS, formatCurrency } from '../utils/constants';
+import { CHART_COLORS } from '../utils/constants';
 import toast from 'react-hot-toast';
 import FormattedAmountInput from '../components/FormattedAmountInput';
 import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Goals = () => {
   const { t, locale } = useLanguage();
+  const { currency, formatCurrency } = useCurrency();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFundsModal, setShowFundsModal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Delete Confirmation State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
 
   const [addFormData, setAddFormData] = useState({
     name: '',
@@ -47,9 +55,11 @@ const Goals = () => {
     setError('');
     setSaving(true);
     try {
+      const numericTarget = parseFloat(addFormData.targetAmount);
+      const dbTarget = currency === 'USD' ? Math.round(numericTarget * 25400) : numericTarget;
       const payload = {
         name: addFormData.name,
-        targetAmount: parseFloat(addFormData.targetAmount),
+        targetAmount: dbTarget,
         deadline: addFormData.deadline || null
       };
       await goalService.createGoal(payload);
@@ -71,15 +81,16 @@ const Goals = () => {
     setError('');
     setSaving(true);
     try {
-      const amount = parseFloat(fundsAmount);
-      if (isNaN(amount) || amount <= 0) {
+      const enteredAmount = parseFloat(fundsAmount);
+      if (isNaN(enteredAmount) || enteredAmount <= 0) {
         throw new Error(locale === 'vi' ? 'Vui lòng nhập số tiền tiết kiệm hợp lệ' : 'Please enter a valid savings amount');
       }
-      await goalService.addFunds(selectedGoal.id, amount);
+      const dbAmount = currency === 'USD' ? Math.round(enteredAmount * 25400) : enteredAmount;
+      await goalService.addFunds(selectedGoal.id, dbAmount);
       toast.success(
         locale === 'vi'
-          ? `Đã nạp thành công ${formatCurrency(amount)} vào ${selectedGoal.name}!`
-          : `Successfully added ${formatCurrency(amount)} to ${selectedGoal.name}!`
+          ? `Đã nạp thành công ${formatCurrency(dbAmount)} vào ${selectedGoal.name}!`
+          : `Successfully added ${formatCurrency(dbAmount)} to ${selectedGoal.name}!`
       );
       setShowFundsModal(false);
       setFundsAmount('');
@@ -94,16 +105,27 @@ const Goals = () => {
     }
   };
 
-  const handleDeleteGoal = async (id) => {
-    if (!window.confirm(t('confirmDeleteGoal'))) return;
+  const triggerDeleteConfirm = (id) => {
+    setGoalToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteGoal = async () => {
+    if (!goalToDelete) return;
+    setDeleting(true);
     try {
-      await goalService.deleteGoal(id);
+      await goalService.deleteGoal(goalToDelete);
       toast.success(t('toastGoalDeletedSuccess'));
+      setShowDeleteModal(false);
+      setGoalToDelete(null);
       fetchGoals();
     } catch (err) {
       toast.error(err.message || t('toastGoalDeletedError'));
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   const triggerAddFunds = (goal) => {
     setSelectedGoal(goal);
@@ -154,15 +176,14 @@ const Goals = () => {
   };
 
   return (
-    <div className="goals-page" style={{ padding: '24px' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Trophy size={28} color="#FFC107" /> {t('goalsTitle')}
+    <div className="goals-page">
+      <div className="page-header">
+        <h1 className="page-title">
+          {t('goalsTitle')}
         </h1>
         <button 
           className="button button-primary" 
           onClick={() => setShowAddModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
           <Plus size={20} /> {t('addGoalBtn')}
         </button>
@@ -207,7 +228,7 @@ const Goals = () => {
                         </button>
                         <button 
                           className="button"
-                          onClick={() => handleDeleteGoal(goal.id)}
+                          onClick={() => triggerDeleteConfirm(goal.id)}
                           style={{ background: '#fee2e2', color: '#ef4444', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}
                           title={t('deleteGoalTooltip')}
                         >
@@ -309,10 +330,9 @@ const Goals = () => {
               </div>
 
               <div className="form-group">
-                <label>{t('targetAmountLabel')}</label>
+                <label>{t('targetAmountLabel')} ({currency})</label>
                 <FormattedAmountInput
                   className="input"
-                  placeholder={t('targetAmountPlaceholder')}
                   value={addFormData.targetAmount}
                   onChange={(val) => setAddFormData({ ...addFormData, targetAmount: val })}
                   required
@@ -369,10 +389,9 @@ const Goals = () => {
               </div>
 
               <div className="form-group">
-                <label>{t('amountToAddLabel')}</label>
+                <label>{t('amountToAddLabel')} ({currency})</label>
                 <FormattedAmountInput
                   className="input"
-                  placeholder={t('amountToAddPlaceholder')}
                   value={fundsAmount}
                   onChange={setFundsAmount}
                   required
@@ -393,6 +412,43 @@ const Goals = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => { setShowDeleteModal(false); setGoalToDelete(null); }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('confirmDeleteTitle')}</h2>
+              <button className="close-button" onClick={() => { setShowDeleteModal(false); setGoalToDelete(null); }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '24px', color: 'var(--text-light)', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'left' }}>
+              {t('confirmDeleteGoalText')}
+            </div>
+
+            <div className="button-group" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => { setShowDeleteModal(false); setGoalToDelete(null); }}
+                disabled={deleting}
+              >
+                {t('keepBtn')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={handleDeleteGoal}
+                disabled={deleting}
+              >
+                {deleting ? t('loading') : t('deleteBtn')}
+              </button>
+            </div>
           </div>
         </div>
       )}

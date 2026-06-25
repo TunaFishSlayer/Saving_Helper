@@ -15,7 +15,7 @@ const MICROSERVICE_URL = process.env.OCR_MICROSERVICE_URL || "http://127.0.0.1:8
  * @param {string} imagePath - Path to the uploaded local image
  * @returns {Promise<object>} - The parsed, structured JSON payload
  */
-export const parseReceiptImage = async (imagePath) => {
+export const parseReceiptImage = async (imagePath, categories) => {
   logInfo(`Forwarding receipt to OCR Microservice: ${imagePath}`);
   logInfo(`Target URL: ${MICROSERVICE_URL}`);
 
@@ -33,13 +33,16 @@ export const parseReceiptImage = async (imagePath) => {
 
     const form = new FormData();
     form.append("file", blob, filename);
+    if (categories) {
+      form.append("categories", categories);
+    }
 
-    // 2. Post via Axios to FastAPI (Timeout configured to 60s)
+    // 2. Post via Axios to FastAPI (Timeout configured to 120s for heavy ML inference)
     const response = await axios.post(MICROSERVICE_URL, form, {
       headers: {
         // Content-Type is handled automatically by Axios with native FormData
       },
-      timeout: 60000 // 60 seconds timeout
+      timeout: 120000 // 120 seconds timeout
     });
 
     logInfo("Successfully received response from OCR Microservice.");

@@ -112,6 +112,70 @@
   }
 }
 
+/* Header Settings Dropdowns */
+.header-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 6px 32px 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--card-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
+  cursor: pointer;
+  outline: none;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-select:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background-color: var(--bg);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.header-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), var(--shadow-sm);
+}
+
+.header-select:active {
+  transform: translateY(0);
+}
+
+/* Custom Select trigger styling override */
+.custom-select-trigger {
+  padding: 6px 12px !important;
+  background-image: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 65px;
+}
+
+@media (max-width: 480px) {
+  .custom-select-trigger {
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+    min-width: 50px;
+  }
+}
+
 /* Sidebar */
 .sidebar {
   position: fixed;
@@ -214,24 +278,28 @@
   margin-bottom: 0.25rem;
   color: var(--text-light);
   text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   background: transparent;
   border: none;
   width: 100%;
   text-align: left;
   font-size: 1rem;
+  font-weight: 500;
 }
 
 .nav-item:hover {
   background: var(--bg);
   color: var(--text);
+  transform: translateX(4px);
 }
 
 .nav-item.active {
-  background: var(--primary);
+  background: var(--primary-gradient);
   color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 
 .sidebar-footer {
@@ -403,6 +471,137 @@
     gap: 20px;
   }
 }
+
+/* Responsive visibility helpers */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: block !important;
+  }
+}
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block !important;
+  }
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Small viewport header adaptations */
+@media (max-width: 480px) {
+  .welcome-prefix {
+    display: none !important;
+  }
+  .status-label {
+    display: none !important;
+  }
+  .header-select {
+    padding: 5px 26px 5px 8px !important;
+    font-size: 12px !important;
+    background-position: right 8px center !important;
+  }
+}
+
+/* Mobile Subscriptions card list */
+.mobile-subscriptions-feed {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .subscriptions-page .subscriptions-list {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  
+  .mobile-subscriptions-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .mobile-subscription-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid rgba(229, 231, 235, 0.5);
+    transition: transform 0.2s ease;
+  }
+  
+  .mobile-subscription-card:active {
+    transform: translateY(1px) scale(0.99);
+  }
+  
+  .mobile-subscription-card .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mobile-subscription-card .card-service-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  
+  .mobile-subscription-card .card-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e11d48;
+  }
+  
+  .mobile-subscription-card .card-middle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mobile-subscription-card .card-category {
+    font-size: 0.85rem;
+    color: var(--text-light);
+  }
+  
+  .mobile-subscription-card .card-billing-cycle {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  
+  .mobile-subscription-card .card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+  
+  .mobile-subscription-card .card-next-billing {
+    font-size: 0.8rem;
+    color: var(--text-light);
+  }
+  
+  .mobile-subscription-card .card-action-btn.cancel {
+    color: var(--danger);
+    background: none;
+    border: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+}
+
 
 
 

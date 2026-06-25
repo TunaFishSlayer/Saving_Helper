@@ -3,11 +3,15 @@ import { CalendarClock, Plus, RefreshCw, X, Loader } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import subscriptionService from '../services/subscriptionService';
 import categoryService from '../services/categoryService';
-import { CHART_COLORS, formatCurrency } from '../utils/constants';
+import { CHART_COLORS } from '../utils/constants';
 import toast from 'react-hot-toast';
 import FormattedAmountInput from '../components/FormattedAmountInput';
+import { useLanguage } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Subscriptions = () => {
+  const { t } = useLanguage();
+  const { currency, formatCurrency } = useCurrency();
   const [subscriptions, setSubscriptions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -81,9 +85,11 @@ const Subscriptions = () => {
     setSaving(true);
 
     try {
+      const numericAmount = parseFloat(formData.amount);
+      const dbAmount = currency === 'USD' ? Math.round(numericAmount * 25400) : numericAmount;
       const payload = {
         ...formData,
-        amount: parseFloat(formData.amount)
+        amount: dbAmount
       };
 
       await subscriptionService.createSubscription(payload);
@@ -159,23 +165,22 @@ const Subscriptions = () => {
   };
 
   return (
-    <div className="subscriptions-page" style={{ padding: '24px' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CalendarClock size={28} color="#E91E63" /> Subscriptions Tracker
+    <div className="subscriptions-page">
+      <div className="page-header">
+        <h1 className="page-title">
+          {t('subscriptionsTitle')}
         </h1>
         <button 
           className="button button-primary" 
           onClick={() => setShowModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
-          <Plus size={20} /> Add Subscription
+          <Plus size={20} /> {t('addSubscriptionBtn')}
         </button>
       </div>
 
       <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '24px', borderRadius: '12px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', opacity: 0.9 }}>Total Fixed Monthly Cost</h2>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', opacity: 0.9 }}>{t('totalMonthlyCost')}</h2>
           <p style={{ margin: '8px 0 0 0', fontSize: '2.5rem', fontWeight: 'bold' }}>
             {formatCurrency(totalMonthlyCost)}
           </p>
@@ -189,57 +194,91 @@ const Subscriptions = () => {
             {loading ? (
               <div className="loader-container">
                 <div className="loader"></div>
-                <p>Loading subscriptions...</p>
+                <p>{t('loadingSubscriptions')}</p>
               </div>
             ) : subscriptions.length > 0 ? (
-              <div className="table-container">
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
-                      <th style={{ padding: '16px' }}>Service Name</th>
-                      <th style={{ padding: '16px' }}>Category</th>
-                      <th style={{ padding: '16px' }}>Amount</th>
-                      <th style={{ padding: '16px' }}>Billing Cycle</th>
-                      <th style={{ padding: '16px' }}>Next Billing Date</th>
-                      <th style={{ padding: '16px' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subscriptions.map((sub) => (
-                      <tr key={sub.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '16px', fontWeight: '500' }}>{sub.name}</td>
-                        <td style={{ padding: '16px' }}>{sub.category?.name || 'Uncategorized'}</td>
-                        <td style={{ padding: '16px', color: '#E91E63', fontWeight: '600' }}>{formatCurrency(sub.amount)}</td>
-                        <td style={{ padding: '16px', textTransform: 'capitalize' }}>
-                          <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            {sub.billingCycle}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px', color: '#666' }}>{(() => {
-                          const d = new Date(sub.nextBillingDate);
-                          const day = String(d.getDate()).padStart(2, '0');
-                          const month = String(d.getMonth() + 1).padStart(2, '0');
-                          const year = String(d.getFullYear()).slice(-2);
-                          return `${day}/${month}/${year}`;
-                        })()}</td>
-                        <td style={{ padding: '16px' }}>
-                          <button 
-                            onClick={() => triggerCancelConfirm(sub.id)}
-                            style={{ color: '#f44336', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
-                          >
-                            Cancel
-                          </button>
-                        </td>
+              <>
+                <div className="table-container desktop-only">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+                         <th style={{ padding: '16px' }}>{t('colServiceName')}</th>
+                        <th style={{ padding: '16px' }}>{t('colCategory')}</th>
+                        <th style={{ padding: '16px' }}>{t('colAmount')}</th>
+                        <th style={{ padding: '16px' }}>{t('colBillingCycle')}</th>
+                        <th style={{ padding: '16px' }}>{t('colNextBilling')}</th>
+                        <th style={{ padding: '16px' }}>{t('colActions')}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {subscriptions.map((sub) => (
+                        <tr key={sub.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '16px', fontWeight: '500' }}>{sub.name}</td>
+                           <td style={{ padding: '16px' }}>{sub.category?.name || t('uncategorized')}</td>
+                          <td style={{ padding: '16px', color: '#E91E63', fontWeight: '600' }}>{formatCurrency(sub.amount)}</td>
+                          <td style={{ padding: '16px', textTransform: 'capitalize' }}>
+                            <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                              {sub.billingCycle}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px', color: '#666' }}>{(() => {
+                            const d = new Date(sub.nextBillingDate);
+                            const day = String(d.getDate()).padStart(2, '0');
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const year = String(d.getFullYear()).slice(-2);
+                            return `${day}/${month}/${year}`;
+                          })()}</td>
+                          <td style={{ padding: '16px' }}>
+                            <button 
+                              onClick={() => triggerCancelConfirm(sub.id)}
+                              style={{ color: '#f44336', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+                            >
+                               {t('cancelBtn')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mobile-subscriptions-feed mobile-only">
+                  {subscriptions.map((sub) => (
+                    <div key={sub.id} className="mobile-subscription-card">
+                      <div className="card-top">
+                        <span className="card-service-name">{sub.name}</span>
+                        <span className="card-amount">{formatCurrency(sub.amount)}</span>
+                      </div>
+                      <div className="card-middle">
+                        <span className="card-category">{sub.category?.name || t('uncategorized')}</span>
+                        <span className="card-billing-cycle">{sub.billingCycle}</span>
+                      </div>
+                      <div className="card-bottom">
+                        <span className="card-next-billing">
+                          {t('colNextBilling')}: {(() => {
+                            const d = new Date(sub.nextBillingDate);
+                            const day = String(d.getDate()).padStart(2, '0');
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const year = String(d.getFullYear()).slice(-2);
+                            return `${day}/${month}/${year}`;
+                          })()}
+                        </span>
+                        <button 
+                          className="card-action-btn cancel"
+                          onClick={() => triggerCancelConfirm(sub.id)}
+                        >
+                          {t('cancelBtn')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="empty-state" style={{ padding: '48px', textAlign: 'center' }}>
                 <CalendarClock size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
-                <h3>No subscriptions found</h3>
-                <p>Add active services to keep track of recurring payments</p>
+                <h3>{t('noSubscriptions')}</h3>
+                <p>{t('noSubscriptionsDesc')}</p>
               </div>
             )}
           </div>
@@ -247,8 +286,8 @@ const Subscriptions = () => {
 
         <div className="subscriptions-chart-container">
           <div className="card" style={{ padding: '24px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-            <h2 className="card-title" style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Cost Breakdown
+              <h2 className="card-title" style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {t('costBreakdown')}
             </h2>
             {chartData.length > 0 ? (
               <div style={{ height: '260px', width: '100%' }}>
@@ -275,7 +314,7 @@ const Subscriptions = () => {
               </div>
             ) : (
               <div className="empty-state" style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-light)' }}>
-                <p>No active subscriptions to show breakdown</p>
+                <p>{t('noBreakdown')}</p>
               </div>
             )}
           </div>
@@ -287,7 +326,7 @@ const Subscriptions = () => {
         <div className="modal-overlay" onClick={resetForm}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add Subscription</h2>
+              <h2>{t('addSubModalTitle')}</h2>
               <button className="close-button" onClick={resetForm}>
                 <X size={24} />
               </button>
@@ -301,11 +340,11 @@ const Subscriptions = () => {
 
             <form onSubmit={handleSubmit} className="form">
               <div className="form-group">
-                <label>Service Name</label>
+                <label>{t('serviceNameLabel')}</label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="e.g. Netflix, Spotify"
+                  placeholder={t('serviceNamePlaceholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -313,14 +352,14 @@ const Subscriptions = () => {
               </div>
 
               <div className="form-group">
-                <label>Category</label>
+                <label>{t('subCategoryLabel')}</label>
                 <select 
                   className="input" 
                   value={formData.categoryId} 
                   onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} 
                   required
                 >
-                  <option value="">Select Category</option>
+                  <option value="">{t('formSelectCategory')}</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
@@ -330,10 +369,9 @@ const Subscriptions = () => {
               </div>
 
               <div className="form-group">
-                <label>Amount (VND)</label>
+                <label>{t('subAmountLabel')} ({currency})</label>
                 <FormattedAmountInput
                   className="input"
-                  placeholder="e.g. 260.000"
                   value={formData.amount}
                   onChange={(val) => setFormData({ ...formData, amount: val })}
                   required
@@ -341,21 +379,21 @@ const Subscriptions = () => {
               </div>
 
               <div className="form-group">
-                <label>Billing Cycle</label>
+                <label>{t('billingCycleLabel')}</label>
                 <select
                   className="input"
                   value={formData.billingCycle}
                   onChange={(e) => setFormData({ ...formData, billingCycle: e.target.value })}
                   required
                 >
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
+                  <option value="weekly">{t('cycleWeekly')}</option>
+                  <option value="monthly">{t('cycleMonthly')}</option>
+                  <option value="yearly">{t('cycleYearly')}</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Next Billing Date</label>
+                <label>{t('nextBillingDateLabel')}</label>
                 <input
                   type="date"
                   className="input"
@@ -367,14 +405,14 @@ const Subscriptions = () => {
 
               <div className="button-group">
                 <button type="submit" className="button button-primary" disabled={saving}>
-                  {saving ? 'Adding...' : 'Add Subscription'}
+                  {saving ? t('addingBtn') : t('addSubscriptionBtn')}
                 </button>
                 <button
                   type="button"
                   className="button button-secondary"
                   onClick={resetForm}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </form>
@@ -387,14 +425,14 @@ const Subscriptions = () => {
         <div className="modal-overlay" onClick={() => { setShowConfirmModal(false); setSubToCancel(null); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Cancel Subscription</h2>
+              <h2>{t('cancelSubModalTitle')}</h2>
               <button className="close-button" onClick={() => { setShowConfirmModal(false); setSubToCancel(null); }}>
                 <X size={24} />
               </button>
             </div>
             
             <div style={{ marginBottom: '24px', color: 'var(--text-light)', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'left' }}>
-              Are you sure you want to cancel this subscription? This will permanently delete the recurring expense tracker from your account.
+              {t('cancelSubConfirmText')}
             </div>
 
             <div className="button-group" style={{ justifyContent: 'flex-end', gap: '12px' }}>
@@ -404,7 +442,7 @@ const Subscriptions = () => {
                 onClick={() => { setShowConfirmModal(false); setSubToCancel(null); }}
                 disabled={cancelling}
               >
-                Keep Subscription
+                {t('keepSubscription')}
               </button>
               <button
                 type="button"
@@ -412,7 +450,7 @@ const Subscriptions = () => {
                 onClick={handleCancel}
                 disabled={cancelling}
               >
-                {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                {cancelling ? t('cancelling') : t('confirmCancel')}
               </button>
             </div>
           </div>

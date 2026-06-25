@@ -62,3 +62,15 @@
   color: var(--text-light);
   font-size: 0.875rem;
 }
+
+@media (max-width: 480px) {
+  .categories-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .category-card {
+    padding: 1rem !important;
+  }
+}
+

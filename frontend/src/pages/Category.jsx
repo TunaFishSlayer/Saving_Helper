@@ -1,17 +1,64 @@
-// src/pages/Category.jsx
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { Plus, X, FolderOpen, Edit2 } from 'lucide-react'; 
 import categoryService from '../services/categoryService';
 import { CATEGORY_TYPES } from '../utils/constants';
+import { useLanguage } from '../context/LanguageContext';
   
 const Category = () => {
+  const { t, locale } = useLanguage();
   const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeedDefaultCategories = async () => {
+    setSeeding(true);
+    try {
+      const defaultCategories = locale === 'vi' ? [
+        { name: "Ăn uống", type: "expense", description: "Ăn uống, siêu thị, nhà hàng" },
+        { name: "Nhà cửa", type: "expense", description: "Tiền thuê nhà, bảo trì, sửa chữa" },
+        { name: "Di chuyển", type: "expense", description: "Xăng xe, xe ôm, phương tiện công cộng" },
+        { name: "Hóa đơn & Tiện ích", type: "expense", description: "Điện, nước, internet, điện thoại" },
+        { name: "Giải trí", type: "expense", description: "Xem phim, ca nhạc, du lịch" },
+        { name: "Mua sắm", type: "expense", description: "Quần áo, giày dép, thiết bị" },
+        { name: "Lương", type: "income", description: "Thu nhập chính từ công việc" },
+        { name: "Thu nhập phụ", type: "income", description: "Làm thêm, freelance, đầu tư" },
+        { name: "Quà tặng & Thưởng", type: "income", description: "Quà tặng, tiền thưởng, lì xì" }
+      ] : [
+        { name: "Food & Dining", type: "expense", description: "Groceries, restaurants, fast food" },
+        { name: "Housing", type: "expense", description: "Rent, mortgage, home maintenance" },
+        { name: "Transportation", type: "expense", description: "Gas, public transit, car maintenance" },
+        { name: "Utilities", type: "expense", description: "Electricity, water, internet, phone" },
+        { name: "Entertainment", type: "expense", description: "Movies, games, subscriptions" },
+        { name: "Shopping", type: "expense", description: "Clothing, electronics, personal items" },
+        { name: "Salary", type: "income", description: "Primary job income" },
+        { name: "Side Hustle", type: "income", description: "Freelance or part-time work" },
+        { name: "Gifts", type: "income", description: "Gifts and bonuses" }
+      ];
+
+      for (const cat of defaultCategories) {
+        await categoryService.createCategory(cat);
+      }
+      
+      toast.success(locale === 'vi' ? 'Đã khởi tạo các danh mục mặc định!' : 'Default categories initialized!');
+      fetchCategories();
+    } catch (err) {
+      console.error(err);
+      toast.error(locale === 'vi' ? 'Không thể khởi tạo danh mục' : 'Failed to initialize categories');
+    } finally {
+      setSeeding(false);
+    }
+  };
   
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
   const [currentCategoryId, setCurrentCategoryId] = useState(null);
+
+  // Delete Confirmation State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
 
   const [formData, setFormData] = useState({
     name: '',
@@ -81,19 +128,29 @@ const Category = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+  const triggerDeleteConfirm = (id) => {
+    setCategoryToDelete(id);
+    setShowDeleteModal(true);
+  };
 
+  const handleDelete = async () => {
+    if (!categoryToDelete) return;
+    setDeleting(true);
     try {
-      await categoryService.deleteCategory(id);
+      await categoryService.deleteCategory(categoryToDelete);
       toast.success('Category deleted successfully!');
+      setShowDeleteModal(false);
+      setCategoryToDelete(null);
       fetchCategories();
     } catch (err) {
       const error = err.message || 'Failed to delete category';
       setError(error);
       toast.error(error);
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   const filteredCategories = filter
     ? categories.filter(cat => cat.type === filter)
@@ -105,13 +162,13 @@ const Category = () => {
   return (
     <div className="categories-page">
       <div className="page-header">
-        <h1 className="page-title">Categories</h1>
+        <h1 className="page-title">{t('categoriesTitle')}</h1>
         <button 
           className="button button-primary" 
           onClick={() => { resetForm(); setShowModal(true); }}
         >
           <Plus size={20} />
-          Add Category
+          {t('addCategoryBtn')}
         </button>
       </div>
 
@@ -121,19 +178,19 @@ const Category = () => {
           className={`filter-tab ${filter === '' ? 'active' : ''}`}
           onClick={() => setFilter('')}
         >
-          All ({categories.length})
+          {t('allFilter')} ({categories.length})
         </button>
         <button
           className={`filter-tab ${filter === 'income' ? 'active' : ''}`}
           onClick={() => setFilter('income')}
         >
-          Income ({incomeCategories.length})
+          {t('filterIncome')} ({incomeCategories.length})
         </button>
         <button
           className={`filter-tab ${filter === 'expense' ? 'active' : ''}`}
           onClick={() => setFilter('expense')}
         >
-          Expense ({expenseCategories.length})
+          {t('filterExpense')} ({expenseCategories.length})
         </button>
       </div>
 
@@ -159,12 +216,11 @@ const Category = () => {
                   >
                     <Edit2 size={20} />
                   </button>
-                  <button
+                   <button
                     className="delete-button"
-                    onClick={() => handleDelete(category.id)}
+                    onClick={() => triggerDeleteConfirm(category.id)}
                     title="Delete Category"
                   >
-
                     <X size={20} />
                   </button>
                 </div>
@@ -184,8 +240,17 @@ const Category = () => {
       {!loading && filteredCategories.length === 0 && (
         <div className="empty-state">
           <FolderOpen size={64} />
-          <h3>No categories found</h3>
-          <p>Create your first category to get started</p>
+          <h3>{t('noCategoriesFound')}</h3>
+          <p>{t('noCategoriesDesc')}</p>
+          <button 
+            type="button" 
+            className="button button-primary" 
+            style={{ marginTop: '1.5rem' }}
+            onClick={handleSeedDefaultCategories}
+            disabled={seeding}
+          >
+            {seeding ? t('initializingBtn') : t('initDefaultCategoriesBtn')}
+          </button>
         </div>
       )}
 
@@ -194,7 +259,7 @@ const Category = () => {
         <div className="modal-overlay" onClick={resetForm}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{isEditing ? 'Edit Category' : 'Add Category'}</h2>
+              <h2>{isEditing ? t('editCategoryModalTitle') : t('addCategoryModalTitle')}</h2>
               <button className="close-button" onClick={resetForm}>
                 <X size={24} />
               </button>
@@ -208,7 +273,7 @@ const Category = () => {
 
             <form onSubmit={handleSubmit} className="form">
               <div className="form-group">
-                <label>Category Name</label>
+                <label>{t('categoryNameLabel')}</label>
                 <input
                   type="text"
                   className="input"
@@ -219,20 +284,20 @@ const Category = () => {
               </div>
 
               <div className="form-group">
-                <label>Type</label>
+                <label>{t('categoryTypeLabel')}</label>
                 <select
                   className="input"
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   required
                 >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
+                  <option value="expense">{t('filterExpense')}</option>
+                  <option value="income">{t('filterIncome')}</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Description (Optional)</label>
+                <label>{t('categoryDescriptionLabel')}</label>
                 <textarea
                   className="input"
                   rows="3"
@@ -243,17 +308,54 @@ const Category = () => {
 
               <div className="button-group">
                 <button type="submit" className="button button-primary">
-                  {isEditing ? 'Update Category' : 'Create Category'}
+                  {isEditing ? t('updateCategoryBtn') : t('createCategoryBtn')}
                 </button>
                 <button
                   type="button"
                   className="button button-secondary"
                   onClick={resetForm}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => { setShowDeleteModal(false); setCategoryToDelete(null); }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('confirmDeleteTitle')}</h2>
+              <button className="close-button" onClick={() => { setShowDeleteModal(false); setCategoryToDelete(null); }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '24px', color: 'var(--text-light)', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'left' }}>
+              {t('confirmDeleteCategoryText')}
+            </div>
+
+            <div className="button-group" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => { setShowDeleteModal(false); setCategoryToDelete(null); }}
+                disabled={deleting}
+              >
+                {t('keepBtn')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? t('loading') : t('deleteBtn')}
+              </button>
+            </div>
           </div>
         </div>
       )}

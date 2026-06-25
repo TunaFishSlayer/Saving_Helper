@@ -169,6 +169,38 @@ async function fetchUserUpdates(userId) {
   const goals = await prisma.goal.findMany({ where: { userId } });
   const subscriptions = await prisma.subscription.findMany({ where: { userId } });
 
+  // Self-heal any legacy or seeded database records missing a clientUuid
+  for (const cat of categories) {
+    if (!cat.clientUuid) {
+      cat.clientUuid = cat.id;
+      await prisma.category.update({ where: { id: cat.id }, data: { clientUuid: cat.id } });
+    }
+  }
+  for (const tx of transactions) {
+    if (!tx.clientUuid) {
+      tx.clientUuid = tx.id;
+      await prisma.transaction.update({ where: { id: tx.id }, data: { clientUuid: tx.id } });
+    }
+  }
+  for (const b of budgets) {
+    if (!b.clientUuid) {
+      b.clientUuid = b.id;
+      await prisma.budget.update({ where: { id: b.id }, data: { clientUuid: b.id } });
+    }
+  }
+  for (const g of goals) {
+    if (!g.clientUuid) {
+      g.clientUuid = g.id;
+      await prisma.goal.update({ where: { id: g.id }, data: { clientUuid: g.id } });
+    }
+  }
+  for (const s of subscriptions) {
+    if (!s.clientUuid) {
+      s.clientUuid = s.id;
+      await prisma.subscription.update({ where: { id: s.id }, data: { clientUuid: s.id } });
+    }
+  }
+
   return {
     categories,
     transactions,

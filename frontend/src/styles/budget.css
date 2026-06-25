@@ -119,3 +119,19 @@
   background: #fee2e2;
   color: #7f1d1d;
 }
+
+@media (max-width: 480px) {
+  .budgets-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .budget-card {
+    padding: 1rem !important;
+  }
+  
+  .budget-value {
+    font-size: 1.25rem !important;
+  }
+}
+

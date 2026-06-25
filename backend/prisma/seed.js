@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -42,9 +43,12 @@ async function main() {
 
   const categories = {};
   for (const cat of categoriesData) {
+    const uuid = randomUUID();
     const createdCat = await prisma.category.create({
       data: {
         ...cat,
+        id: uuid,
+        clientUuid: uuid,
         userId: user.id
       }
     });
@@ -61,9 +65,12 @@ async function main() {
   ];
 
   for (const sub of subscriptionsData) {
+    const uuid = randomUUID();
     await prisma.subscription.create({
       data: {
         ...sub,
+        id: uuid,
+        clientUuid: uuid,
         userId: user.id
       }
     });
@@ -78,9 +85,12 @@ async function main() {
   ];
 
   for (const goal of goalsData) {
+    const uuid = randomUUID();
     await prisma.goal.create({
       data: {
         ...goal,
+        id: uuid,
+        clientUuid: uuid,
         userId: user.id
       }
     });
@@ -95,9 +105,12 @@ async function main() {
   ];
 
   for (const budget of budgetsData) {
+    const uuid = randomUUID();
     await prisma.budget.create({
       data: {
         ...budget,
+        id: uuid,
+        clientUuid: uuid,
         userId: user.id
       }
     });
@@ -117,9 +130,12 @@ async function main() {
   ];
 
   for (const tx of transactionsData) {
+    const uuid = randomUUID();
     await prisma.transaction.create({
       data: {
         ...tx,
+        id: uuid,
+        clientUuid: uuid,
         userId: user.id
       }
     });

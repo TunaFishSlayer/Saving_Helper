@@ -28,7 +28,8 @@ class BudgetService {
       id,
       clientUuid: id,
       isActive: true,
-      limitAmount: Number(budgetData.limitAmount)
+      amount: Number(budgetData.amount),
+      alertThreshold: Number(budgetData.alertThreshold || 80)
     };
 
     await localDb.budgets.put(newBudget);
@@ -54,7 +55,8 @@ class BudgetService {
     const updatedBudget = {
       ...existing,
       ...budgetData,
-      limitAmount: Number(budgetData.limitAmount)
+      amount: Number(budgetData.amount || existing.amount),
+      alertThreshold: Number(budgetData.alertThreshold || existing.alertThreshold)
     };
 
     await localDb.budgets.put(updatedBudget);
@@ -97,16 +99,69 @@ class BudgetService {
     const budget = await this.getBudgetById(id);
     if (!budget) throw new Error('Budget not found');
 
+    const now = new Date();
+    let periodStart = new Date(budget.startDate);
+    let periodEnd = budget.endDate ? new Date(budget.endDate) : now;
+
+    if (budget.period === "weekly") {
+      const dayOfWeek = now.getDay(); 
+      const daysSinceSunday = dayOfWeek;
+      periodStart = new Date(now);
+      periodStart.setDate(now.getDate() - daysSinceSunday);
+      periodStart.setHours(0, 0, 0, 0);
+      
+      periodEnd = new Date(periodStart);
+      periodEnd.setDate(periodStart.getDate() + 6);
+      periodEnd.setHours(23, 59, 59, 999);
+    } 
+    else if (budget.period === "monthly") {
+      periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } 
+    else if (budget.period === "yearly") {
+      periodStart = new Date(now.getFullYear(), 0, 1);
+      periodEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+
     // Fetch transactions inside category
     const txs = await localDb.transactions.toArray();
-    const categoryTxs = txs.filter(t => t.categoryId === budget.categoryId && t.type === 'expense');
+    const categoryTxs = txs.filter(t => 
+      t.categoryId === budget.categoryId && 
+      t.type === 'expense' &&
+      new Date(t.date) >= periodStart &&
+      new Date(t.date) <= periodEnd
+    );
     const totalSpent = categoryTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const remaining = budget.amount - totalSpent;
+    const percentageUsed = budget.amount > 0 ? (totalSpent / budget.amount) * 100 : 0;
+    const isOverBudget = totalSpent > budget.amount;
+    const isNearLimit = percentageUsed >= (budget.alertThreshold || 80);
+
+    const cats = await localDb.categories.toArray();
+    const cat = cats.find(c => c.id === budget.categoryId);
 
     return {
-      budget,
-      totalSpent,
-      remaining: budget.limitAmount - totalSpent,
-      percentage: (totalSpent / budget.limitAmount) * 100
+      budget: {
+        id: budget.id,
+        categoryId: budget.categoryId,
+        categoryName: cat?.name || 'Unknown',
+        amount: budget.amount,
+        period: budget.period,
+        alertThreshold: budget.alertThreshold || 80,
+        isActive: budget.isActive
+      },
+      spending: {
+        totalSpent,
+        remaining: remaining > 0 ? remaining : 0,
+        percentageUsed: Math.min(percentageUsed, 100).toFixed(2),
+        isOverBudget,
+        isNearLimit: isNearLimit && !isOverBudget,
+        overBudgetAmount: isOverBudget ? Math.abs(remaining) : 0
+      },
+      period: {
+        start: periodStart,
+        end: periodEnd
+      }
     };
   }
 
@@ -116,49 +171,68 @@ class BudgetService {
       budgets = budgets.filter(b => b.period === period);
     }
 
-    const txs = await localDb.transactions.toArray();
-    const overviewList = [];
-
+    const budgetStatuses = [];
     for (const b of budgets) {
-      const categoryTxs = txs.filter(t => t.categoryId === b.categoryId && t.type === 'expense');
-      const totalSpent = categoryTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      overviewList.push({
-        id: b.id,
-        limitAmount: b.limitAmount,
-        period: b.period,
-        categoryId: b.categoryId,
-        totalSpent,
-        remaining: b.limitAmount - totalSpent,
-        percentage: (totalSpent / b.limitAmount) * 100
-      });
+      try {
+        const status = await this.getBudgetStatus(b.id);
+        budgetStatuses.push(status);
+      } catch (err) {
+        console.error(`Failed to get status for budget ${b.id}:`, err);
+      }
     }
 
-    return overviewList;
+    const summary = {
+      totalBudgets: budgetStatuses.length,
+      totalBudgeted: budgetStatuses.reduce((sum, b) => sum + b.budget.amount, 0),
+      totalSpent: budgetStatuses.reduce((sum, b) => sum + b.spending.totalSpent, 0),
+      overBudgetCount: budgetStatuses.filter(b => b.spending.isOverBudget).length,
+      nearLimitCount: budgetStatuses.filter(b => b.spending.isNearLimit).length
+    };
+
+    return {
+      data: {
+        summary,
+        budgets: budgetStatuses
+      }
+    };
   }
 
   async getBudgetAlerts() {
     const budgets = await this.getBudgets();
-    const txs = await localDb.transactions.toArray();
     const alerts = [];
 
     for (const b of budgets) {
-      const categoryTxs = txs.filter(t => t.categoryId === b.categoryId && t.type === 'expense');
-      const totalSpent = categoryTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-      const percentage = (totalSpent / b.limitAmount) * 100;
-
-      if (percentage >= 80) {
-        alerts.push({
-          budgetId: b.id,
-          categoryId: b.categoryId,
-          limitAmount: b.limitAmount,
-          totalSpent,
-          percentage,
-          message: `You have spent ${percentage.toFixed(1)}% of your category budget!`
-        });
+      try {
+        const status = await this.getBudgetStatus(b.id);
+        if (status.spending.isOverBudget) {
+          alerts.push({
+            type: 'over_budget',
+            severity: 'high',
+            budgetId: b.id,
+            categoryName: status.budget.categoryName,
+            message: `You have exceeded your ${b.period} budget for ${status.budget.categoryName} by ${parseFloat(status.spending.overBudgetAmount).toFixed(2)}`,
+            data: status
+          });
+        } else if (status.spending.isNearLimit) {
+          alerts.push({
+            type: 'near_limit',
+            severity: 'medium',
+            budgetId: b.id,
+            categoryName: status.budget.categoryName,
+            message: `You have used ${status.spending.percentageUsed}% of your ${b.period} budget for ${status.budget.categoryName}`,
+            data: status
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to check alerts for budget ${b.id}:`, err);
       }
     }
 
-    return alerts;
+    return {
+      data: {
+        alerts
+      }
+    };
   }
 }
 
