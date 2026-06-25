@@ -1,0 +1,177 @@
+@startuml system_architecture
+' ─────────────────────────────────────────────
+' Diagram 1: System Architecture
+' ─────────────────────────────────────────────
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam componentStyle rectangle
+skinparam defaultFontName Arial
+title System Architecture — Savings Helper
+
+actor "User / Browser" as user
+actor "Android App\n(Capacitor)" as android
+
+package "Frontend\n(React + Vite + Capacitor)" as frontend {
+  component "React App\n(Pages + Components)" as react
+  component "Context Providers\n(Auth, Language, Currency)" as ctx
+  component "IndexedDB\n(Dexie.js)" as indexdb
+  component "Sync Queue" as syncq
+}
+
+package "Backend\n(Node.js + Express)" as backend {
+  component "REST API\n(Routes + Controllers)" as api
+  component "Auth Middleware\n(JWT Verify)" as authmw
+  component "Service Layer\n(Business Logic)" as svc
+  component "Subscription Scheduler\n(Cron Job)" as scheduler
+  database "SQLite\n(Prisma ORM)" as db
+}
+
+package "OCR Microservice\n(Python + FastAPI)" as ocr {
+  component "FastAPI Router" as fastapi
+  component "PaddleOCR / VietOCR\n(Text Extraction)" as paddleocr
+  component "Groq LLM API\n(Structured Parsing)" as groq
+}
+
+user --> react : HTTPS
+android --> react : WebView
+
+react --> ctx
+react <--> indexdb : Read/Write\n(offline storage)
+react --> syncq : Queue mutations\nwhen offline
+syncq --> api : POST /api/sync\n(when online)
+
+react --> api : REST calls\nAuthorization: Bearer <JWT>
+api --> authmw : Verify token
+authmw --> svc
+svc --> db : Prisma queries
+scheduler --> svc : Cron-triggered\nsubscription billing
+
+react --> fastapi : POST /scan\n(multipart image)
+fastapi --> paddleocr : Extract raw text
+paddleocr --> fastapi
+fastapi --> groq : Analyze text
+groq --> fastapi : Structured JSON
+fastapi --> react : {amount, description, category}
+
+@enduml
+
+
+@startuml usecase_overview
+' ─────────────────────────────────────────────
+' Diagram 2: Updated Use Case Diagram
+' ─────────────────────────────────────────────
+!theme plain
+skinparam defaultFontName Arial
+title Use Case Diagram — Savings Helper (Phiên bản Cải tiến)
+
+left to right direction
+
+actor "Người dùng\n(Đã đăng nhập)" as user
+actor "Khách\n(Guest / Offline)" as guest
+actor "Hệ thống\n(Cron Scheduler)" as system
+
+rectangle "Savings Helper" {
+  usecase "Đăng ký tài khoản" as UC1
+  usecase "Đăng nhập Email/Password" as UC2
+  usecase "Đăng nhập Google SSO" as UC3
+  usecase "Quên mật khẩu (OTP Email)" as UC4
+  usecase "Cập nhật hồ sơ cá nhân" as UC5
+  usecase "Đổi mật khẩu" as UC6
+  usecase "Xóa tài khoản" as UC7
+
+  usecase "Quản lý Danh mục" as UC8
+
+  usecase "Thêm giao dịch thủ công" as UC9
+  usecase "Quét hóa đơn bằng AI" as UC10
+  usecase "Lọc & Xem danh sách giao dịch" as UC11
+  usecase "Xuất Excel / CSV" as UC12
+
+  usecase "Quản lý Ngân sách" as UC13
+
+  usecase "Quản lý Mục tiêu Tích lũy" as UC14
+  usecase "Nạp tiền vào Mục tiêu" as UC15
+
+  usecase "Quản lý Dịch vụ Định kỳ" as UC16
+
+  usecase "Xem Dashboard & Biểu đồ" as UC17
+
+  usecase "Sử dụng chế độ Offline" as UC18
+  usecase "Đồng bộ dữ liệu lên Cloud" as UC19
+
+  usecase "Tự động ghi giao dịch\ntheo lịch định kỳ" as UC20
+
+  usecase "Chuyển đổi Ngôn ngữ\n(VI / EN)" as UC21
+  usecase "Chuyển đổi Tiền tệ\n(VND / USD)" as UC22
+}
+
+guest --> UC1
+guest --> UC2
+guest --> UC3
+guest --> UC18
+guest --> UC10 : (giới hạn lượt)
+
+user --> UC2
+user --> UC3
+user --> UC4
+user --> UC5
+user --> UC6
+user --> UC7
+user --> UC8
+user --> UC9
+user --> UC10
+user --> UC11
+user --> UC12
+user --> UC13
+user --> UC14
+user --> UC15
+user --> UC16
+user --> UC17
+user --> UC19
+user --> UC21
+user --> UC22
+
+system --> UC20
+
+@enduml
+
+
+@startuml layered_architecture
+' ─────────────────────────────────────────────
+' Diagram 3: Layered Architecture (3-tier)
+' ─────────────────────────────────────────────
+!theme plain
+skinparam defaultFontName Arial
+skinparam backgroundColor #FAFAFA
+title Kiến trúc Phân tầng (Layered Architecture) — Savings Helper
+
+package "Tầng Trình bày\n(Presentation Layer)" as presentation {
+  component "Pages\n(Dashboard, Transactions, Budget,\nGoals, Subscriptions, Profile...)" as pages
+  component "Shared Components\n(Header, BottomNavbar, Modals,\nFormattedAmountInput, FAB)" as components
+  component "React Contexts\n(AuthContext, LanguageContext,\nCurrencyContext)" as contexts
+  component "Services (Client)\n(transactionService, goalService,\nbugdetService, syncService...)" as clientsvc
+}
+
+package "Tầng API\n(API Layer)" as api_layer {
+  component "Express Router\n(routes/auth, transactions,\nbudgets, goals, subscriptions, sync)" as routes
+  component "Controllers\n(authController, transactionController,\nbudgetController, goalController,\nsubscriptionController, syncController)" as controllers
+  component "Middlewares\n(authMiddleware, errorHandler,\nrateLimiter, requestLogger)" as middlewares
+}
+
+package "Tầng Nghiệp vụ\n(Service Layer)" as service_layer {
+  component "Services\n(UserService, TransactionService,\nBudgetService, GoalService,\nSubscriptionService, SyncService)" as services
+  component "Cron Scheduler\n(subscriptionScheduler)" as scheduler
+  component "Utilities\n(hashUtils, resetCodeUtils,\nformatters)" as utils
+}
+
+package "Tầng Dữ liệu\n(Data Layer)" as data_layer {
+  component "Prisma Client\n(Type-safe ORM)" as prisma
+  database "SQLite Database\n(backend/prisma/dev.db)" as db
+}
+
+presentation --> api_layer : REST (HTTP/HTTPS)\nAuthorization: Bearer JWT
+api_layer --> service_layer : Delegated business logic
+service_layer --> data_layer : ORM queries
+scheduler --> service_layer : Cron-triggered billing
+data_layer --> db
+
+@enduml
