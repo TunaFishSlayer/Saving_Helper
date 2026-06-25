@@ -1,14 +1,16 @@
 // src/pages/Profile.jsx
 
 import { useState } from 'react';
-import { User, Lock, Trash2 } from 'lucide-react';
+import { User, Lock, Trash2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('profile');
   const [profileData, setProfileData] = useState({
     name: user?.name || ''
@@ -20,6 +22,8 @@ const Profile = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -30,9 +34,9 @@ const Profile = () => {
     try {
       const response = await authService.updateProfile(profileData);
       updateUser(response.data);
-      setMessage('Profile updated successfully!');
+      setMessage(t('profileUpdatedSuccess'));
     } catch (err) {
-      setError(err.message || 'Failed to update profile');
+      setError(err.message || t('profileUpdatedError'));
     } finally {
       setLoading(false);
     }
@@ -46,38 +50,41 @@ const Profile = () => {
 
     try {
       await authService.updatePassword(passwordData);
-      setMessage('Password updated successfully!');
+      setMessage(t('passwordUpdatedSuccess'));
       setPasswordData({ oldPassword: '', newPassword: '' });
     } catch (err) {
-      setError(err.message || 'Failed to update password');
+      setError(err.message || t('passwordUpdatedError'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      return;
-    }
+  const closeDeleteConfirmModal = () => {
+    setShowDeleteConfirmModal(false);
+    setDeleteStep(1);
+  };
 
-    if (!confirm('This will permanently delete all your data. Are you absolutely sure?')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await authService.deleteAccount();
-      logout();
-      navigate('/login');
-    } catch (err) {
-      setError(err.message || 'Failed to delete account');
-      setLoading(false);
+  const proceedDeleteAccount = async () => {
+    if (deleteStep === 1) {
+      setDeleteStep(2);
+    } else if (deleteStep === 2) {
+      try {
+        setLoading(true);
+        await authService.deleteAccount();
+        closeDeleteConfirmModal();
+        logout();
+        navigate('/login');
+      } catch (err) {
+        setError(err.message || t('deleteAccountError'));
+        setLoading(false);
+        setDeleteStep(1);
+      }
     }
   };
 
   return (
     <div className="profile-page">
-      <h1 className="page-title">Profile Settings</h1>
+      <h1 className="page-title">{t('profileTitle')}</h1>
 
       <div className="profile-container">
         <div className="profile-sidebar">
@@ -86,21 +93,21 @@ const Profile = () => {
             onClick={() => setActiveTab('profile')}
           >
             <User size={20} />
-            <span>Profile</span>
+            <span>{t('profileTabName')}</span>
           </button>
           <button
             className={`profile-tab ${activeTab === 'password' ? 'active' : ''}`}
             onClick={() => setActiveTab('password')}
           >
             <Lock size={20} />
-            <span>Password</span>
+            <span>{t('passwordTabName')}</span>
           </button>
           <button
             className={`profile-tab ${activeTab === 'danger' ? 'active' : ''}`}
             onClick={() => setActiveTab('danger')}
           >
             <Trash2 size={20} />
-            <span>Danger Zone</span>
+            <span>{t('dangerTabName')}</span>
           </button>
         </div>
 
@@ -119,21 +126,21 @@ const Profile = () => {
 
           {activeTab === 'profile' && (
             <div className="card">
-              <h2 className="card-title">Profile Information</h2>
+              <h2 className="card-title">{t('profileInfoTitle')}</h2>
               <form onSubmit={handleUpdateProfile} className="form">
                 <div className="form-group">
-                  <label>Email</label>
+                  <label>{t('emailLabel')}</label>
                   <input
                     type="email"
                     className="input"
                     value={user?.email || ''}
                     disabled
                   />
-                  <small className="form-text">Email cannot be changed</small>
+                  <small className="form-text">{t('emailCantChange')}</small>
                 </div>
 
                 <div className="form-group">
-                  <label>Name</label>
+                  <label>{t('nameLabel')}</label>
                   <input
                     type="text"
                     className="input"
@@ -144,7 +151,7 @@ const Profile = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Account Type</label>
+                  <label>{t('accountTypeLabel')}</label>
                   <input
                     type="text"
                     className="input"
@@ -158,7 +165,7 @@ const Profile = () => {
                   className="button button-primary"
                   disabled={loading}
                 >
-                  {loading ? 'Updating...' : 'Update Profile'}
+                  {loading ? t('updatingBtn') : t('updateProfileBtn')}
                 </button>
               </form>
             </div>
@@ -166,15 +173,15 @@ const Profile = () => {
 
           {activeTab === 'password' && (
             <div className="card">
-              <h2 className="card-title">Change Password</h2>
+              <h2 className="card-title">{t('changePasswordTitle')}</h2>
               {user?.provider === 'google' ? (
                 <div className="info-message">
-                  <p>You are signed in with Google. Password changes are not available for Google accounts.</p>
+                  <p>{t('googleInfoText')}</p>
                 </div>
               ) : (
                 <form onSubmit={handleUpdatePassword} className="form">
                   <div className="form-group">
-                    <label>Current Password</label>
+                    <label>{t('currentPasswordLabel')}</label>
                     <input
                       type="password"
                       className="input"
@@ -185,7 +192,7 @@ const Profile = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>New Password</label>
+                    <label>{t('newPasswordLabel')}</label>
                     <input
                       type="password"
                       className="input"
@@ -193,7 +200,7 @@ const Profile = () => {
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                       required
                     />
-                    <small className="form-text">Minimum 6 characters</small>
+                    <small className="form-text">{t('minCharacters')}</small>
                   </div>
 
                   <button
@@ -201,7 +208,7 @@ const Profile = () => {
                     className="button button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Updating...' : 'Update Password'}
+                    {loading ? t('updatingBtn') : t('updatePasswordBtn')}
                   </button>
                 </form>
               )}
@@ -210,24 +217,61 @@ const Profile = () => {
 
           {activeTab === 'danger' && (
             <div className="card danger-zone">
-              <h2 className="card-title">Danger Zone</h2>
+              <h2 className="card-title">{t('dangerTabName')}</h2>
               <div className="danger-content">
                 <div>
-                  <h3>Delete Account</h3>
-                  <p>Permanently delete your account and all associated data. This action cannot be undone.</p>
+                  <h3>{t('deleteAccountTitle')}</h3>
+                  <p>{t('deleteAccountDesc')}</p>
                 </div>
                 <button
                   className="button button-danger"
-                  onClick={handleDeleteAccount}
+                  onClick={() => setShowDeleteConfirmModal(true)}
                   disabled={loading}
                 >
-                  {loading ? 'Deleting...' : 'Delete Account'}
+                  {loading ? t('deletingBtn') : t('deleteAccountBtn')}
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <div className="modal-overlay" onClick={closeDeleteConfirmModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('confirmDeleteTitle')}</h2>
+              <button className="close-button" onClick={closeDeleteConfirmModal}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '24px', color: 'var(--text-light)', fontSize: '0.95rem', lineHeight: '1.5', textAlign: 'left' }}>
+              {deleteStep === 1 ? t('confirmDeleteAccountText') : t('confirmDeleteAccountText2')}
+            </div>
+
+            <div className="button-group" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={closeDeleteConfirmModal}
+                disabled={loading}
+              >
+                {t('keepBtn')}
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={proceedDeleteAccount}
+                disabled={loading}
+              >
+                {loading ? t('deletingBtn') : (deleteStep === 1 ? t('deleteBtn') : t('confirm'))}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
