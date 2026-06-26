@@ -212,7 +212,7 @@ const Subscriptions = () => {
                     </thead>
                     <tbody>
                       {subscriptions.map((sub) => (
-                        <tr key={sub.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <tr key={sub.clientUuid} style={{ borderBottom: '1px solid #eee' }}>
                           <td style={{ padding: '16px', fontWeight: '500' }}>{sub.name}</td>
                            <td style={{ padding: '16px' }}>{sub.category?.name || t('uncategorized')}</td>
                           <td style={{ padding: '16px', color: '#E91E63', fontWeight: '600' }}>{formatCurrency(sub.amount)}</td>
@@ -230,7 +230,7 @@ const Subscriptions = () => {
                           })()}</td>
                           <td style={{ padding: '16px' }}>
                             <button 
-                              onClick={() => triggerCancelConfirm(sub.id)}
+                              onClick={() => triggerCancelConfirm(sub.clientUuid)}
                               style={{ color: '#f44336', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '500' }}
                             >
                                {t('cancelBtn')}
@@ -244,7 +244,7 @@ const Subscriptions = () => {
 
                 <div className="mobile-subscriptions-feed mobile-only">
                   {subscriptions.map((sub) => (
-                    <div key={sub.id} className="mobile-subscription-card">
+                    <div key={sub.clientUuid} className="mobile-subscription-card">
                       <div className="card-top">
                         <span className="card-service-name">{sub.name}</span>
                         <span className="card-amount">{formatCurrency(sub.amount)}</span>
@@ -265,7 +265,7 @@ const Subscriptions = () => {
                         </span>
                         <button 
                           className="card-action-btn cancel"
-                          onClick={() => triggerCancelConfirm(sub.id)}
+                          onClick={() => triggerCancelConfirm(sub.clientUuid)}
                         >
                           {t('cancelBtn')}
                         </button>
@@ -361,7 +361,7 @@ const Subscriptions = () => {
                 >
                   <option value="">{t('formSelectCategory')}</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
+                    <option key={cat.clientUuid} value={cat.clientUuid}>
                       {cat.name}
                     </option>
                   ))}

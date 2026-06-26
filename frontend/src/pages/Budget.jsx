@@ -75,7 +75,7 @@ const Budget = () => {
       alertThreshold: budget.alertThreshold
     });
     
-    setCurrentBudgetId(budget.id); // Use the inner budget ID
+    setCurrentBudgetId(budget.clientUuid); // Use the inner budget clientUuid
     setIsEditing(true);
     setShowModal(true);
   };
@@ -169,7 +169,7 @@ const Budget = () => {
       ) : budgets.length > 0 ? (
         <div className="budgets-grid">
           {budgets.map((item) => (
-            <div key={item.budget.id} className="budget-card">
+            <div key={item.budget.clientUuid} className="budget-card">
               <div className="budget-header">
                 <div>
                   <h3 className="budget-category">{item.budget.categoryName}</h3>
@@ -189,7 +189,7 @@ const Budget = () => {
                   </button>
                    <button 
                     className="delete-button" 
-                    onClick={() => triggerDeleteConfirm(item.budget.id)}
+                    onClick={() => triggerDeleteConfirm(item.budget.clientUuid)}
                     title="Delete Budget"
                   >
                     <X size={20} />
@@ -251,7 +251,7 @@ const Budget = () => {
                 <select className="input" value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} required>
                   <option value="">{t('formSelectCategory')}</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
+                    <option key={cat.clientUuid} value={cat.clientUuid}>
                       {cat.name}
                     </option>
                   ))}

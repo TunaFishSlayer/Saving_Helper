@@ -39,11 +39,13 @@ export const syncData = async (req, res) => {
 
           if (entityType === "category") {
             if (action === "create" || action === "update") {
-              await tx.category.upsert({
-                where: { clientUuid: clientUuid },
-                update: data,
-                create: { ...data, clientUuid }
-              });
+              const existing = await tx.category.findUnique({ where: { clientUuid } });
+              if (existing) {
+                if (existing.userId !== userId) throw new Error("Unauthorized update for category");
+                await tx.category.update({ where: { clientUuid }, data });
+              } else {
+                await tx.category.create({ data: { ...data, clientUuid } });
+              }
             } else if (action === "delete") {
               await tx.category.deleteMany({
                 where: { clientUuid: clientUuid, userId: userId }
@@ -61,11 +63,13 @@ export const syncData = async (req, res) => {
             }
 
             if (action === "create" || action === "update") {
-              await tx.transaction.upsert({
-                where: { clientUuid: clientUuid },
-                update: data,
-                create: { ...data, clientUuid }
-              });
+              const existing = await tx.transaction.findUnique({ where: { clientUuid } });
+              if (existing) {
+                if (existing.userId !== userId) throw new Error("Unauthorized update for transaction");
+                await tx.transaction.update({ where: { clientUuid }, data });
+              } else {
+                await tx.transaction.create({ data: { ...data, clientUuid } });
+              }
             } else if (action === "delete") {
               await tx.transaction.deleteMany({
                 where: { clientUuid: clientUuid, userId: userId }
@@ -82,11 +86,13 @@ export const syncData = async (req, res) => {
             }
 
             if (action === "create" || action === "update") {
-              await tx.budget.upsert({
-                where: { clientUuid: clientUuid },
-                update: data,
-                create: { ...data, clientUuid }
-              });
+              const existing = await tx.budget.findUnique({ where: { clientUuid } });
+              if (existing) {
+                if (existing.userId !== userId) throw new Error("Unauthorized update for budget");
+                await tx.budget.update({ where: { clientUuid }, data });
+              } else {
+                await tx.budget.create({ data: { ...data, clientUuid } });
+              }
             } else if (action === "delete") {
               await tx.budget.deleteMany({
                 where: { clientUuid: clientUuid, userId: userId }
@@ -94,11 +100,13 @@ export const syncData = async (req, res) => {
             }
           } else if (entityType === "goal") {
             if (action === "create" || action === "update") {
-              await tx.goal.upsert({
-                where: { clientUuid: clientUuid },
-                update: data,
-                create: { ...data, clientUuid }
-              });
+              const existing = await tx.goal.findUnique({ where: { clientUuid } });
+              if (existing) {
+                if (existing.userId !== userId) throw new Error("Unauthorized update for goal");
+                await tx.goal.update({ where: { clientUuid }, data });
+              } else {
+                await tx.goal.create({ data: { ...data, clientUuid } });
+              }
             } else if (action === "delete") {
               await tx.goal.deleteMany({
                 where: { clientUuid: clientUuid, userId: userId }
@@ -115,11 +123,13 @@ export const syncData = async (req, res) => {
             }
 
             if (action === "create" || action === "update") {
-              await tx.subscription.upsert({
-                where: { clientUuid: clientUuid },
-                update: data,
-                create: { ...data, clientUuid }
-              });
+              const existing = await tx.subscription.findUnique({ where: { clientUuid } });
+              if (existing) {
+                if (existing.userId !== userId) throw new Error("Unauthorized update for subscription");
+                await tx.subscription.update({ where: { clientUuid }, data });
+              } else {
+                await tx.subscription.create({ data: { ...data, clientUuid } });
+              }
             } else if (action === "delete") {
               await tx.subscription.deleteMany({
                 where: { clientUuid: clientUuid, userId: userId }

@@ -100,7 +100,7 @@ const Category = () => {
       type: category.type,
       description: category.description || ''
     });
-    setCurrentCategoryId(category.id);
+    setCurrentCategoryId(category.clientUuid);
     setIsEditing(true);
     setShowModal(true);
   };
@@ -201,7 +201,7 @@ const Category = () => {
       ) : (
         <div className="categories-grid">
           {filteredCategories.map((category) => (
-            <div key={category.id} className="category-card">
+            <div key={category.clientUuid} className="category-card">
               <div className="category-header">
 
                 <div className="category-icon">
@@ -218,7 +218,7 @@ const Category = () => {
                   </button>
                    <button
                     className="delete-button"
-                    onClick={() => triggerDeleteConfirm(category.id)}
+                    onClick={() => triggerDeleteConfirm(category.clientUuid)}
                     title="Delete Category"
                   >
                     <X size={20} />

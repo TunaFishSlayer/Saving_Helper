@@ -86,7 +86,7 @@ const Goals = () => {
         throw new Error(locale === 'vi' ? 'Vui lòng nhập số tiền tiết kiệm hợp lệ' : 'Please enter a valid savings amount');
       }
       const dbAmount = currency === 'USD' ? Math.round(enteredAmount * 25400) : enteredAmount;
-      await goalService.addFunds(selectedGoal.id, dbAmount);
+      await goalService.addFunds(selectedGoal.clientUuid, dbAmount);
       toast.success(
         locale === 'vi'
           ? `Đã nạp thành công ${formatCurrency(dbAmount)} vào ${selectedGoal.name}!`
@@ -203,7 +203,7 @@ const Goals = () => {
                 {goals.map((goal) => {
                   const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
                   return (
-                    <div key={goal.id} className="goal-card" style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative' }}>
+                    <div key={goal.clientUuid} className="goal-card" style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#333', fontWeight: 600 }}>{goal.name}</h3>
                         <Target size={20} color="#666" />
@@ -228,7 +228,7 @@ const Goals = () => {
                         </button>
                         <button 
                           className="button"
-                          onClick={() => triggerDeleteConfirm(goal.id)}
+                          onClick={() => triggerDeleteConfirm(goal.clientUuid)}
                           style={{ background: '#fee2e2', color: '#ef4444', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}
                           title={t('deleteGoalTooltip')}
                         >

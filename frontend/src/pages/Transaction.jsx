@@ -222,7 +222,7 @@ const Transaction = () => {
       // Ensure date is formatted for input type="date"
       date: new Date(transaction.date).toISOString().split('T')[0]
     });
-    setCurrentTransactionId(transaction.id);
+    setCurrentTransactionId(transaction.clientUuid);
     setIsEditing(true);
     setShowModal(true);
   };
@@ -360,7 +360,7 @@ const Transaction = () => {
 
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    const category = categories.find(cat => cat.clientUuid === categoryId || cat.id === categoryId);
     return category?.name || 'Unknown';
   };
 
@@ -450,7 +450,7 @@ const Transaction = () => {
               >
                 <option value="">{t('filterAllCategories')}</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
+                  <option key={cat.clientUuid} value={cat.clientUuid}>
                     {cat.name}
                   </option>
                 ))}
@@ -504,7 +504,7 @@ const Transaction = () => {
                 </thead>
                 <tbody>
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id}>
+                    <tr key={transaction.clientUuid}>
                       <td>{(() => {
                         const d = new Date(transaction.date);
                         const day = String(d.getDate()).padStart(2, '0');
@@ -534,7 +534,7 @@ const Transaction = () => {
                           </button>
                           <button
                             className="icon-button delete"
-                            onClick={() => triggerDeleteConfirm(transaction.id)}
+                            onClick={() => triggerDeleteConfirm(transaction.clientUuid)}
                             title="Delete Transaction"
                           >
                             <X size={18} />
@@ -547,10 +547,9 @@ const Transaction = () => {
               </table>
             </div>
 
-            {/* Mobile Cards Feed View */}
             <div className="mobile-transactions-feed">
               {transactions.map((transaction) => (
-                <div key={transaction.id} className="mobile-transaction-card">
+                <div key={transaction.clientUuid} className="mobile-transaction-card">
                   <div className="card-top">
                     <span className="card-category">
                       {getCategoryName(transaction.categoryId)}
@@ -582,7 +581,7 @@ const Transaction = () => {
                       </button>
                       <button
                         className="card-action-btn delete"
-                        onClick={() => triggerDeleteConfirm(transaction.id)}
+                        onClick={() => triggerDeleteConfirm(transaction.clientUuid)}
                       >
                         <X size={14} />
                         <span>Delete</span>
@@ -643,7 +642,7 @@ const Transaction = () => {
                 >
                   <option value="">{t('formSelectCategory')}</option>
                   {availableCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
+                    <option key={cat.clientUuid} value={cat.clientUuid}>
                       {cat.name}
                     </option>
                   ))}

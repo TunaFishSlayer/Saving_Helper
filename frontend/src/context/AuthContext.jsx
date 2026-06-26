@@ -4,6 +4,7 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 import { STORAGE_KEYS } from '../utils/constants';
 import { generateUUID, seedDefaultCategories } from '../services/localDb';
+import syncService from '../services/syncService';
 
 const AuthContext = createContext(null);
 
@@ -65,12 +66,17 @@ export const AuthProvider = ({ children }) => {
     seedDefaultCategories();
   };
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
     localStorage.removeItem('auth_mode');
     setAuthMode('cloud');
     setToken(null);
     setUser(null);
+    try {
+      await syncService.clearLocalDatabase();
+    } catch (err) {
+      console.error('Failed to clear database on logout:', err);
+    }
   };
 
   const updateUser = (updatedUser) => {
