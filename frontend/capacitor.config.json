@@ -1,6 +1,6 @@
 {
-  "appId": "com.gr1.savingshelper",
-  "appName": "GR1 Savings Helper",
+  "appId": "com.gr2.savingshelper",
+  "appName": "GR2 Savings Helper",
   "webDir": "dist",
   "android": {
     "allowMixedContent": true
