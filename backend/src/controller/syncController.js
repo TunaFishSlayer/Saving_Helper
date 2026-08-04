@@ -1,6 +1,12 @@
 import { prisma } from "../config/db.js";
 import logger from "../utils/logger.js";
 
+const safeParseDate = (val) => {
+  if (val === undefined || val === null || val === "") return null;
+  const parsed = new Date(val);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
 export const syncData = async (req, res) => {
   const { userId } = req.user;
   const { mutations } = req.body;
@@ -19,27 +25,56 @@ export const syncData = async (req, res) => {
         try {
           const { id: queueId, action, entityType, clientUuid, payload } = mut;
           
-          // Ensure the payload is associated with the syncing user
-          const data = {
-            ...payload,
-            userId: userId
-          };
+          // Sanitization: Keep only schema-valid fields for each model
+          const sanitizedData = { userId };
+          
+          if (entityType === "category") {
+            const allowed = ["clientUuid", "name", "type", "description", "createdAt"];
+            allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
+          } else if (entityType === "transaction") {
+            const allowed = ["clientUuid", "amount", "description", "type", "date", "createdAt", "categoryId"];
+            allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
+          } else if (entityType === "budget") {
+            const allowed = ["clientUuid", "amount", "period", "startDate", "endDate", "alertThreshold", "isActive", "createdAt", "updatedAt", "categoryId"];
+            allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
+          } else if (entityType === "goal") {
+            const allowed = ["clientUuid", "name", "targetAmount", "currentAmount", "deadline", "createdAt", "updatedAt"];
+            allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
+          } else if (entityType === "subscription") {
+            const allowed = ["clientUuid", "name", "amount", "billingCycle", "nextBillingDate", "isActive", "createdAt", "updatedAt", "categoryId"];
+            allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
+          }
 
-          // Remove relations/unsupported fields from payload before saving to Prisma
-          delete data.id; // We use clientUuid or let database map by clientUuid/id
-          delete data.synced; // IndexedDB specific status flag
-          delete data.category; // nested category object if any
+          // Force userId to the authenticated user's ID
+          sanitizedData.userId = userId;
+          const data = sanitizedData;
 
           // Make sure date fields are parsed properly into Date objects for Prisma
-          if (data.date) data.date = new Date(data.date);
-          if (data.startDate) data.startDate = new Date(data.startDate);
-          if (data.endDate) data.endDate = new Date(data.endDate);
-          if (data.deadline) data.deadline = new Date(data.deadline);
-          if (data.nextBillingDate) data.nextBillingDate = new Date(data.nextBillingDate);
+          if (data.date !== undefined) data.date = safeParseDate(data.date);
+          if (data.startDate !== undefined) data.startDate = safeParseDate(data.startDate);
+          if (data.endDate !== undefined) data.endDate = safeParseDate(data.endDate);
+          if (data.deadline !== undefined) data.deadline = safeParseDate(data.deadline);
+          if (data.nextBillingDate !== undefined) data.nextBillingDate = safeParseDate(data.nextBillingDate);
 
           if (entityType === "category") {
             if (action === "create" || action === "update") {
-              const existing = await tx.category.findUnique({ where: { clientUuid } });
+              let existing = await tx.category.findUnique({ where: { clientUuid } });
+              
+              if (!existing) {
+                // Check if a category with the same name already exists for this user
+                existing = await tx.category.findFirst({
+                  where: { userId, name: data.name }
+                });
+                
+                if (existing) {
+                  // Link the existing category with the incoming clientUuid
+                  existing = await tx.category.update({
+                    where: { id: existing.id },
+                    data: { clientUuid }
+                  });
+                }
+              }
+
               if (existing) {
                 if (existing.userId !== userId) throw new Error("Unauthorized update for category");
                 await tx.category.update({ where: { clientUuid }, data });

@@ -4,9 +4,7 @@ import json
 import io
 import time
 import base64
-import warnings
 import uvicorn
-import numpy as np
 import sys
 
 # Force UTF-8 encoding on standard output/error to prevent UnicodeEncodeError on Windows
@@ -15,42 +13,23 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Suppress PaddlePaddle's noisy ccache build-tool warning (runtime-irrelevant)
-warnings.filterwarnings("ignore", message=".*ccache.*", category=UserWarning)
-warnings.filterwarnings("ignore", message=".*pretrained.*", category=UserWarning)
 from PIL import Image
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from dotenv import load_dotenv
 
 # Load localized environment variables from this directory's .env
-from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 load_dotenv(dotenv_path=env_path)
 
 
-# 1. Global Setup & Pre-loading Models (Only runs ONCE on server boot)
-print("[OCR Server] Pre-loading ML models into memory...")
-
-from paddleocr import PaddleOCR
+# 1. Global Setup
 from groq import Groq
-
-# Init PaddleOCR — detection + built-in Vietnamese recognition in one pass.
-# use_textline_orientation=False  → skips loading the extra orientation model (faster startup & inference)
-# lang='vi'                       → uses latin_PP-OCRv5_mobile_rec (Vietnamese-optimized)
-# enable_mkldnn=False             → bypass CPU instruction compatibility issues
-paddle_ocr = PaddleOCR(
-    use_textline_orientation=False,
-    lang='vi',
-    enable_mkldnn=False
-)
 
 # Get GROQ key
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 if not GROQ_API_KEY:
     print("[OCR Server] WARNING: GROQ_API_KEY not found in localized .env!")
-
-print("[OCR Server] Pre-loading complete! Models are ready.")
 
 # 2. FastAPI Application Definition
 app = FastAPI(title="Savings Helper OCR Microservice")
@@ -190,138 +169,54 @@ async def parse_receipt(file: UploadFile = File(...), categories: str = Form(Non
             f"Thêm trường 'category' ở cấp cao nhất của JSON trả về, giá trị BẮT BUỘC phải là một chuỗi khớp chính xác 100% với một phần tử trong danh sách trên. Nếu không có danh mục nào khớp hợp lý, trả về null."
         )
 
-
-
-        # ── Step 2: Attempt direct multimodal parsing via Groq Vision (Llama 4 Scout) ──
-        try:
-            print("[OCR Server] Attempting direct multimodal parsing via Llama 4 Scout...")
-            t_vision = time.perf_counter()
-            client = Groq(api_key=GROQ_API_KEY)
-            
-            response = client.chat.completions.create(
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
-                messages=[
-                    {"role": "system", "content": FULL_SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": user_prompt_vision},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                temperature=0.1
-            )
-            print(f"[OCR Timer] Groq Vision call       : {time.perf_counter()-t_vision:.2f}s")
-            
-            raw_content = response.choices[0].message.content
-            match = re.search(r'\{.*\}', raw_content, re.DOTALL)
-            if match:
-                parsed = json.loads(match.group())
-                print("[OCR Server] -- Parsed Receipt JSON (Vision) -----------")
-                print(json.dumps(parsed, ensure_ascii=False, indent=2))
-                print("[OCR Server] ---------------------------------------------")
-                print(f"[OCR Timer] [OK] TOTAL (Vision)     : {time.perf_counter()-t_total:.2f}s")
-                return parsed
-            else:
-                print("[OCR Server] WARNING: Vision model response could not be parsed to JSON. Falling back to local OCR...")
-        except Exception as e:
-            print(f"[OCR Server] WARNING: Direct Vision call failed: {e}. Falling back to local OCR...")
-
-        # ── Step 3: Fallback - Run Local PaddleOCR ──
-        print("[OCR Server] Running PaddleOCR detection + recognition...")
-        t0 = time.perf_counter()
-        temp_name = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"temp_ocr_{os.getpid()}.jpg")
-        img_pil.save(temp_name)
-        try:
-            results = paddle_ocr.predict(temp_name)
-        finally:
-            if os.path.exists(temp_name):
-                os.remove(temp_name)
-        print(f"[OCR Timer] PaddleOCR predict   : {time.perf_counter()-t0:.2f}s")
-
-        # ── Step 4: Fallback - Extract recognized text ──
-        print("[OCR Server] Extracting text from PaddleOCR results...")
-        t0 = time.perf_counter()
-        ocr_lines = []
-
-        if isinstance(results, list) and len(results) > 0:
-            data_block = results[0] if isinstance(results[0], list) else results
-
-            for item in data_block:
-                # ── Dict format (PaddleOCR >= 3.x predict()) ─────────────────
-                if isinstance(item, dict):
-                    # rec_texts contains the already-recognized strings
-                    rec_texts = item.get('rec_texts', [])
-                    rec_scores = item.get('rec_scores', [])
-                    for idx, text in enumerate(rec_texts):
-                        score = rec_scores[idx] if idx < len(rec_scores) else 1.0
-                        if text and text.strip() and score >= 0.4:
-                            ocr_lines.append(text.strip())
-
-                # ── List format [box, (text, conf)] ──────────────────────────
-                elif isinstance(item, list) and len(item) == 2 and isinstance(item[1], tuple):
-                    text, conf = item[1]
-                    if text and text.strip() and conf >= 0.4:
-                        ocr_lines.append(text.strip())
-
-        print(f"[OCR Timer] Text extraction     : {time.perf_counter()-t0:.2f}s")
-
-        ocr_text = "\n".join(ocr_lines)
-
-        if not ocr_text.strip():
-            raise HTTPException(status_code=422, detail="Could not extract any legible text from this receipt.")
-
-        print(f"[OCR Server] Extracted {len(ocr_lines)} lines. Invoking Groq fallback...")
-        print("[OCR Server] -- Extracted OCR Text --------------------------")
-        print(ocr_text)
-        print("[OCR Server] -------------------------------------------------")
-
-        # ── Step 5: Fallback - Contact Groq Text model ──
-        t0 = time.perf_counter()
+        # Multimodal parsing via Groq Vision (Llama 4 Scout)
+        print("[OCR Server] Parsing receipt via Groq Vision (Llama 4 Scout)...")
+        t_vision = time.perf_counter()
         client = Groq(api_key=GROQ_API_KEY)
-        user_prompt_text = (
-            f"Phân tích hóa đơn này và trả về JSON cấu trúc như yêu cầu.\n"
-            f"Chọn một danh mục chính xác cho hóa đơn từ danh sách danh mục sau đây (chọn danh mục phù hợp nhất dựa trên các mặt hàng và loại hóa đơn):\n"
-            f"Danh sách danh mục: {json.dumps(category_list, ensure_ascii=False)}\n\n"
-            f"Thêm trường 'category' ở cấp cao nhất của JSON trả về, giá trị BẮT BUỘC phải là một chuỗi khớp chính xác 100% với một phần tử trong danh sách trên. Nếu không có danh mục nào khớp hợp lý, trả về null.\n\n"
-            f"Nội dung hóa đơn:\n{ocr_text}"
-        )
+        
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
                 {"role": "system", "content": FULL_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt_text}
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt_vision},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
             ],
             temperature=0.1
         )
+        print(f"[OCR Timer] Groq Vision call       : {time.perf_counter()-t_vision:.2f}s")
         
-        print(f"[OCR Timer] Groq API call       : {time.perf_counter()-t0:.2f}s")
-
         raw_content = response.choices[0].message.content
         match = re.search(r'\{.*\}', raw_content, re.DOTALL)
         if match:
-             parsed = json.loads(match.group())
-             print("[OCR Server] -- Parsed Receipt JSON (Fallback) ----------")
-             print(json.dumps(parsed, ensure_ascii=False, indent=2))
-             print("[OCR Server] ---------------------------------------------")
-             print(f"[OCR Timer] [OK] TOTAL (Fallback)   : {time.perf_counter()-t_total:.2f}s")
-             return parsed
+            parsed = json.loads(match.group())
+            print("[OCR Server] -- Parsed Receipt JSON (Vision) -----------")
+            print(json.dumps(parsed, ensure_ascii=False, indent=2))
+            print("[OCR Server] ---------------------------------------------")
+            print(f"[OCR Timer] [OK] TOTAL (Vision)     : {time.perf_counter()-t_total:.2f}s")
+            return parsed
         else:
-             print("[OCR Server] WARNING: Could not parse JSON from Groq fallback response")
-             print(raw_content)
-             return {"error": "Could not parse structured JSON from model response", "raw": raw_content}
+            print("[OCR Server] ERROR: Vision model response could not be parsed to JSON.")
+            raise HTTPException(status_code=422, detail="Could not parse structured JSON from Vision model response.")
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Server error during parsing: {str(e)}")
 
 if __name__ == "__main__":
-    print("[OCR Server] Starting FastAPI microservice on http://0.0.0.0:8000...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"[OCR Server] Starting FastAPI microservice on http://0.0.0.0:{port}...")
+    uvicorn.run(app, host="0.0.0.0", port=port)
+

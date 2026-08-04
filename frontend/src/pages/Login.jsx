@@ -1,8 +1,8 @@
 // src/pages/Login.jsx
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Wallet, AlertCircle, Eye, EyeOff, ArrowLeft, KeyRound, Mail } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AlertCircle, Eye, EyeOff, ArrowLeft, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import { localDb } from '../services/localDb';
@@ -10,7 +10,10 @@ import syncService from '../services/syncService';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, loginGuest } = useAuth();
+  
+  const fromGoOnline = location.state?.fromGoOnline;
   
   const [mode, setMode] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -63,11 +66,23 @@ const Login = () => {
 
       // Check if there is local guest data
       const transactionsCount = await localDb.transactions.count();
-      if (transactionsCount > 0) {
-        setPendingAuth({ token: response.token, user: response.user });
-        setShowMergePrompt(true);
+      const budgetsCount = await localDb.budgets.count();
+      const goalsCount = await localDb.goals.count();
+      const subscriptionsCount = await localDb.subscriptions.count();
+      const hasGuestData = (transactionsCount + budgetsCount + goalsCount + subscriptionsCount) > 0;
+
+      if (hasGuestData) {
+        if (mode === 'register' && fromGoOnline) {
+          login(response.token, response.user);
+          await syncService.mergeGuestDataToServer();
+          navigate('/');
+        } else {
+          setPendingAuth({ token: response.token, user: response.user });
+          setShowMergePrompt(true);
+        }
       } else {
         login(response.token, response.user);
+        await syncService.clearLocalDatabase();
         await syncService.pullLatestData();
         navigate('/');
       }
@@ -260,23 +275,27 @@ const Login = () => {
               {loading ? 'Please wait...' : (mode === 'login' ? 'Login' : 'Register')}
             </button>
 
-            <div className="offline-divider" style={{margin: '1.5rem 0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-              <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
-              <span style={{fontSize: '0.85rem', color: '#94a3b8'}}>or</span>
-              <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
-            </div>
+            {!fromGoOnline && (
+              <>
+                <div className="offline-divider" style={{margin: '1.5rem 0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
+                  <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
+                  <span style={{fontSize: '0.85rem', color: '#94a3b8'}}>or</span>
+                  <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
+                </div>
 
-            <button
-              type="button"
-              className="button"
-              style={{backgroundColor: '#f1f5f9', color: '#334155', borderWidth: '1px', borderColor: '#cbd5e1'}}
-              onClick={() => {
-                loginGuest();
-                navigate('/');
-              }}
-            >
-              Use Offline (Guest Mode)
-            </button>
+                <button
+                  type="button"
+                  className="button"
+                  style={{backgroundColor: '#f1f5f9', color: '#334155', borderWidth: '1px', borderColor: '#cbd5e1'}}
+                  onClick={() => {
+                    loginGuest();
+                    navigate('/');
+                  }}
+                >
+                  Use Offline (Guest Mode)
+                </button>
+              </>
+            )}
           </form>
         )}
 

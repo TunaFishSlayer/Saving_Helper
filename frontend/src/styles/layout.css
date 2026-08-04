@@ -410,6 +410,10 @@
 .bottom-nav-label {
   opacity: 0.8;
   font-size: 0.62rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .bottom-nav-item.active .bottom-nav-label {
@@ -492,6 +496,17 @@
 
 /* Small viewport header adaptations */
 @media (max-width: 480px) {
+  .header {
+    padding: calc(0.5rem + env(safe-area-inset-top)) 0.5rem 0.5rem 0.5rem !important;
+    gap: 8px !important;
+  }
+  .header-content {
+    gap: 6px !important;
+  }
+  .header-title {
+    font-size: 1rem !important;
+    max-width: 110px !important;
+  }
   .welcome-prefix {
     display: none !important;
   }
@@ -499,9 +514,14 @@
     display: none !important;
   }
   .header-select {
-    padding: 5px 26px 5px 8px !important;
-    font-size: 12px !important;
-    background-position: right 8px center !important;
+    padding: 5px 22px 5px 8px !important;
+    font-size: 11px !important;
+    background-position: right 6px center !important;
+  }
+  .custom-select-trigger {
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    min-width: 42px !important;
   }
 }
 

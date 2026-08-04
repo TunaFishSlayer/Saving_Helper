@@ -53,6 +53,7 @@ export const translations = {
     recentTransactions: "Recent Transactions",
     noTransactions: "No transactions yet",
     savingsRate: "Savings Rate",
+    netSavings: "Net Savings",
 
     // ── Transactions ───────────────────────────────────────────────────────
     transactionsTitle: "Transactions",
@@ -296,6 +297,7 @@ export const translations = {
     recentTransactions: "Giao Dịch Gần Đây",
     noTransactions: "Chưa có giao dịch nào",
     savingsRate: "Tỷ Lệ Tiết Kiệm",
+    netSavings: "Tiết kiệm ròng",
 
     // ── Transactions ───────────────────────────────────────────────────────
     transactionsTitle: "Giao Dịch",

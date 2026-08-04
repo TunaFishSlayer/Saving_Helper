@@ -1,6 +1,6 @@
 // src/components/layout/Sidebar.jsx
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, DollarSign, Target, FolderOpen, X, Trophy, CalendarClock, User, LogOut } from 'lucide-react'; 
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 const Sidebar = ({ isOpen, onClose }) => {
   const { t } = useLanguage();
   const { logout, isGuest } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     { path: '/', icon: Home, translationKey: 'navDashboard' },
@@ -57,9 +58,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             <button
               className="nav-item"
               style={{ color: '#4f46e5', fontWeight: 600, marginBottom: '0.5rem' }}
-              onClick={() => {
+              onClick={async () => {
                 onClose();
-                logout(); // logs out guest profile, redirects to login/register page
+                await logout(false);
+                navigate('/login', { state: { fromGoOnline: true } });
               }}
             >
               <User size={20} />

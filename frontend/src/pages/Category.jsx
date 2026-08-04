@@ -14,6 +14,10 @@ const Category = () => {
   const handleSeedDefaultCategories = async () => {
     setSeeding(true);
     try {
+      // Get current categories to prevent duplicates
+      const currentCats = await categoryService.getCategories();
+      const currentNames = new Set(currentCats.map(c => c.name.toLowerCase().trim()));
+
       const defaultCategories = locale === 'vi' ? [
         { name: "Ăn uống", type: "expense", description: "Ăn uống, siêu thị, nhà hàng" },
         { name: "Nhà cửa", type: "expense", description: "Tiền thuê nhà, bảo trì, sửa chữa" },
@@ -36,11 +40,19 @@ const Category = () => {
         { name: "Gifts", type: "income", description: "Gifts and bonuses" }
       ];
 
+      let seededCount = 0;
       for (const cat of defaultCategories) {
-        await categoryService.createCategory(cat);
+        if (!currentNames.has(cat.name.toLowerCase().trim())) {
+          await categoryService.createCategory(cat);
+          seededCount++;
+        }
       }
       
-      toast.success(locale === 'vi' ? 'Đã khởi tạo các danh mục mặc định!' : 'Default categories initialized!');
+      if (seededCount > 0) {
+        toast.success(locale === 'vi' ? `Đã khởi tạo ${seededCount} danh mục mặc định!` : `Initialized ${seededCount} default categories!`);
+      } else {
+        toast.success(locale === 'vi' ? 'Các danh mục mặc định đã tồn tại.' : 'Default categories already exist.');
+      }
       fetchCategories();
     } catch (err) {
       console.error(err);
@@ -163,13 +175,15 @@ const Category = () => {
     <div className="categories-page">
       <div className="page-header">
         <h1 className="page-title">{t('categoriesTitle')}</h1>
-        <button 
-          className="button button-primary" 
-          onClick={() => { resetForm(); setShowModal(true); }}
-        >
-          <Plus size={20} />
-          {t('addCategoryBtn')}
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="button button-primary" 
+            onClick={() => { resetForm(); setShowModal(true); }}
+          >
+            <Plus size={20} />
+            {t('addCategoryBtn')}
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -227,7 +241,7 @@ const Category = () => {
               </div>
               <h3 className="category-name">{category.name}</h3>
               <span className={`category-badge category-${category.type}`}>
-                {category.type}
+                {category.type === 'income' ? t('filterIncome') : t('filterExpense')}
               </span>
               {category.description && (
                 <p className="category-description">{category.description}</p>

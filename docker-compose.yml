@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: savings_helper_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_DB: savings_helper
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d savings_helper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ocr_service:
+    build:
+      context: ./ocr_service
+      dockerfile: Dockerfile
+    container_name: savings_helper_ocr
+    restart: always
+    env_file:
+      - ./ocr_service/.env
+    ports:
+      - "8000:8000"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: savings_helper_backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      ocr_service:
+        condition: service_started
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456}@db:5432/${POSTGRES_DB:-savings_helper}?schema=public
+      OCR_MICROSERVICE_URL: http://ocr_service:8000/parse-receipt
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: savings_helper_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:

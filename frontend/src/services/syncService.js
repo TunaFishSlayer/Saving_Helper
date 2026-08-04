@@ -129,12 +129,15 @@ class SyncService {
   }
 
   async clearLocalDatabase() {
-    await localDb.categories.clear();
-    await localDb.transactions.clear();
-    await localDb.budgets.clear();
-    await localDb.goals.clear();
-    await localDb.subscriptions.clear();
-    await localDb.syncQueue.clear();
+    await Promise.all([
+      localDb.categories.clear(),
+      localDb.transactions.clear(),
+      localDb.budgets.clear(),
+      localDb.goals.clear(),
+      localDb.subscriptions.clear(),
+      localDb.syncQueue.clear(),
+      localDb.appMeta.clear()
+    ]);
   }
 }
 

@@ -1,6 +1,7 @@
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import { prisma } from "../config/db.js";
 import { generateResetToken, verifyResetCode } from "../utils/resetCodeGen.js";
+import { randomUUID } from "crypto";
 
 class UserService {
     static async registerUser({ email, password, name }) {
@@ -35,7 +36,7 @@ class UserService {
         if (!isMatch) {
             throw new Error("Invalid email or password");
         }
-        
+
         const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
         return publicUser;
     }
@@ -60,7 +61,7 @@ class UserService {
                 }
             });
         }
-        
+
         const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = user;
         return publicUser;
     }
@@ -179,6 +180,38 @@ class UserService {
         });
         const { passwordHash: ph, resetCode, resetCodeExpiry, ...publicUser } = updatedUser;
         return publicUser;
+    }
+
+    static async seedUserDefaultCategories(userId) {
+        const defaultCategories = [
+            { name: 'Ăn uống',          type: 'expense', description: 'Nhà hàng, quán ăn, đồ ăn nhanh' },
+            { name: 'Siêu thị',         type: 'expense', description: 'Mua sắm tại siêu thị, tạp hóa' },
+            { name: 'Di chuyển',        type: 'expense', description: 'Grab, taxi, xăng xe, gửi xe' },
+            { name: 'Hóa đơn & Tiện ích', type: 'expense', description: 'Điện, nước, internet, điện thoại' },
+            { name: 'Mua sắm',          type: 'expense', description: 'Quần áo, giày dép, đồ dùng cá nhân' },
+            { name: 'Sức khỏe',         type: 'expense', description: 'Thuốc, bệnh viện, phòng khám' },
+            { name: 'Giải trí',         type: 'expense', description: 'Phim, karaoke, sự kiện, game' },
+            { name: 'Giáo dục',         type: 'expense', description: 'Học phí, sách, khóa học' },
+            { name: 'Nhà ở',            type: 'expense', description: 'Tiền thuê nhà, sửa chữa' },
+            { name: 'Chi tiêu khác',    type: 'expense', description: 'Các chi tiêu chưa phân loại' },
+            { name: 'Lương',            type: 'income',  description: 'Lương hàng tháng, thưởng' },
+            { name: 'Làm thêm',         type: 'income',  description: 'Freelance, part-time, việc phụ' },
+            { name: 'Đầu tư',           type: 'income',  description: 'Cổ phiếu, tiền gửi, tiền lãi' },
+            { name: 'Kinh doanh',       type: 'income',  description: 'Thu nhập từ kinh doanh cá nhân' },
+            { name: 'Thu nhập khác',    type: 'income',  description: 'Quà, tiền hỗ trợ, các khoản khác' },
+        ];
+
+        for (const cat of defaultCategories) {
+            const uuid = randomUUID();
+            await prisma.category.create({
+                data: {
+                    ...cat,
+                    id: uuid,
+                    clientUuid: uuid,
+                    userId
+                }
+            });
+        }
     }
 }
 

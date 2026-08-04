@@ -3,7 +3,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 import { STORAGE_KEYS } from '../utils/constants';
-import { generateUUID, seedDefaultCategories } from '../services/localDb';
+import { generateUUID } from '../services/localDb';
 import syncService from '../services/syncService';
 
 const AuthContext = createContext(null);
@@ -27,7 +27,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (authMode === 'offline') {
       setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
-      seedDefaultCategories();
       setLoading(false);
     } else if (token) {
       fetchProfile();
@@ -54,7 +53,6 @@ export const AuthProvider = ({ children }) => {
     setAuthMode('cloud');
     setToken(newToken);
     setUser(userData);
-    seedDefaultCategories();
   };
 
   const loginGuest = () => {
@@ -63,20 +61,21 @@ export const AuthProvider = ({ children }) => {
     setAuthMode('offline');
     setToken(null);
     setUser({ id: 'guest', name: 'Offline Guest', email: 'offline@guest' });
-    seedDefaultCategories();
   };
 
-  const logout = async () => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    localStorage.removeItem('auth_mode');
-    setAuthMode('cloud');
-    setToken(null);
-    setUser(null);
+  const logout = async (clearDb = true) => {
     try {
-      await syncService.clearLocalDatabase();
+      if (clearDb) {
+        await syncService.clearLocalDatabase();
+      }
     } catch (err) {
       console.error('Failed to clear database on logout:', err);
     }
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    localStorage.removeItem('auth_mode');
+    setToken(null);
+    setUser(null);
+    setAuthMode('cloud');
   };
 
   const updateUser = (updatedUser) => {

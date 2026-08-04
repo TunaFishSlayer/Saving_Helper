@@ -577,14 +577,14 @@ const Transaction = () => {
                         onClick={() => handleEdit(transaction)}
                       >
                         <Edit2 size={14} />
-                        <span>Edit</span>
+                        <span>{t('edit')}</span>
                       </button>
                       <button
                         className="card-action-btn delete"
                         onClick={() => triggerDeleteConfirm(transaction.clientUuid)}
                       >
                         <X size={14} />
-                        <span>Delete</span>
+                        <span>{t('delete')}</span>
                       </button>
                     </div>
                   </div>

@@ -141,7 +141,7 @@ const Dashboard = () => {
       );
       
       const monthly = monthlyRes.map(item => ({
-        name: item.id === 'income' ? 'Income' : 'Expense',
+        id: item.id,
         amount: item.total
       }));
 
@@ -338,6 +338,7 @@ const Dashboard = () => {
               <Line 
                 type="monotone" 
                 dataKey="income" 
+                name={t('filterIncome')}
                 stroke="#10b981" 
                 strokeWidth={2}
                 dot={{ fill: '#10b981', r: 4 }}
@@ -346,6 +347,7 @@ const Dashboard = () => {
               <Line 
                 type="monotone" 
                 dataKey="expense" 
+                name={t('filterExpense')}
                 stroke="#ef4444" 
                 strokeWidth={2}
                 dot={{ fill: '#ef4444', r: 4 }}
@@ -378,7 +380,7 @@ const Dashboard = () => {
                 strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorNetSavings)" 
-                name="Net Savings"
+                name={t('netSavings')}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -478,7 +480,10 @@ const Dashboard = () => {
             <h2 className="card-title">{t('chartMonthlySummary')}</h2>
             {monthlyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
+                <BarChart data={monthlyData.map(item => ({
+                  name: item.id === 'income' ? t('filterIncome') : t('filterExpense'),
+                  amount: item.amount
+                }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                   <XAxis dataKey="name" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" tickFormatter={formatYAxisMillion} />

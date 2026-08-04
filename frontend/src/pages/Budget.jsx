@@ -204,7 +204,10 @@ const Budget = () => {
 
               <div className="progress-bar">
                 <div 
-                  className={`progress-fill ${item.spending.isOverBudget ? 'bg-red' : ''}`} 
+                  className={`progress-fill ${
+                    item.spending.isOverBudget ? 'danger' : 
+                    item.spending.isNearLimit ? 'warning' : ''
+                  }`} 
                   style={{ width: `${item.spending.percentageUsed}%` }}
                 ></div>
               </div>

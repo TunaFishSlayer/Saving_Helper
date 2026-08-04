@@ -55,13 +55,15 @@ const FormattedAmountInput = ({ value, onChange, placeholder, className, require
     if (isNaN(numeric)) return '';
 
     if (currency === 'USD') {
-      // Input is in USD, helper shows VND conversion
+      const formattedSelf = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numeric);
       const vndVal = Math.round(numeric * EXCHANGE_RATE);
-      return `≈ ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(vndVal)}`;
+      const formattedConv = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(vndVal);
+      return `${formattedSelf} (≈ ${formattedConv})`;
     } else {
-      // Input is in VND, helper shows USD conversion
+      const formattedSelf = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(numeric);
       const usdVal = numeric / EXCHANGE_RATE;
-      return `≈ ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdVal)}`;
+      const formattedConv = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdVal);
+      return `${formattedSelf} (≈ ${formattedConv})`;
     }
   };
 

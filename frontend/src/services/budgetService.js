@@ -123,10 +123,15 @@ class BudgetService {
       periodEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     }
 
+    const cats = await localDb.categories.toArray();
+    const cat = cats.find(c => c.id === budget.categoryId || c.clientUuid === budget.categoryId);
+    const catId = cat ? cat.id : budget.categoryId;
+    const catUuid = cat ? cat.clientUuid : budget.categoryId;
+
     // Fetch transactions inside category
     const txs = await localDb.transactions.toArray();
     const categoryTxs = txs.filter(t => 
-      t.categoryId === budget.categoryId && 
+      (t.categoryId === catId || t.categoryId === catUuid) && 
       t.type === 'expense' &&
       new Date(t.date) >= periodStart &&
       new Date(t.date) <= periodEnd
@@ -136,9 +141,6 @@ class BudgetService {
     const percentageUsed = budget.amount > 0 ? (totalSpent / budget.amount) * 100 : 0;
     const isOverBudget = totalSpent > budget.amount;
     const isNearLimit = percentageUsed >= (budget.alertThreshold || 80);
-
-    const cats = await localDb.categories.toArray();
-    const cat = cats.find(c => c.id === budget.categoryId);
 
     return {
       budget: {
@@ -204,24 +206,65 @@ class BudgetService {
     for (const b of budgets) {
       try {
         const status = await this.getBudgetStatus(b.id);
-        if (status.spending.isOverBudget) {
-          alerts.push({
-            type: 'over_budget',
-            severity: 'high',
-            budgetId: b.id,
-            categoryName: status.budget.categoryName,
-            message: `You have exceeded your ${b.period} budget for ${status.budget.categoryName} by ${parseFloat(status.spending.overBudgetAmount).toFixed(2)}`,
-            data: status
-          });
-        } else if (status.spending.isNearLimit) {
-          alerts.push({
-            type: 'near_limit',
-            severity: 'medium',
-            budgetId: b.id,
-            categoryName: status.budget.categoryName,
-            message: `You have used ${status.spending.percentageUsed}% of your ${b.period} budget for ${status.budget.categoryName}`,
-            data: status
-          });
+        const locale = localStorage.getItem('locale') || 'vi';
+        const currency = localStorage.getItem('currency') || 'VND';
+
+        if (status.spending.isOverBudget || status.spending.isNearLimit) {
+          const catName = status.budget.categoryName;
+          const periodName = b.period;
+          
+          let periodText = '';
+          if (locale === 'vi') {
+            periodText = periodName === 'monthly' ? 'hàng tháng' :
+                         periodName === 'weekly' ? 'hàng tuần' :
+                         periodName === 'yearly' ? 'hàng năm' : 'tùy chỉnh';
+          } else {
+            periodText = periodName === 'monthly' ? 'monthly' :
+                         periodName === 'weekly' ? 'weekly' :
+                         periodName === 'yearly' ? 'yearly' : 'custom';
+          }
+
+          const rawAmount = status.spending.isOverBudget ? status.spending.overBudgetAmount : status.budget.amount;
+          const displayAmount = currency === 'USD' ? rawAmount / 25400 : rawAmount;
+          const formattedAmount = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
+            style: 'currency',
+            currency: currency
+          }).format(displayAmount);
+
+          let message = '';
+          if (locale === 'vi') {
+            if (status.spending.isOverBudget) {
+              message = `Bạn đã chi vượt quá ngân sách ${periodText} của danh mục ${catName} là ${formattedAmount}`;
+            } else {
+              message = `Bạn đã sử dụng ${parseFloat(status.spending.percentageUsed).toFixed(0)}% ngân sách ${periodText} của danh mục ${catName}`;
+            }
+          } else {
+            if (status.spending.isOverBudget) {
+              message = `You have exceeded your ${periodText} budget for ${catName} by ${formattedAmount}`;
+            } else {
+              message = `You have used ${parseFloat(status.spending.percentageUsed).toFixed(0)}% of your ${periodText} budget for ${catName}`;
+            }
+          }
+
+          if (status.spending.isOverBudget) {
+            alerts.push({
+              type: 'over_budget',
+              severity: 'high',
+              budgetId: b.id,
+              categoryName: catName,
+              message: message,
+              data: status
+            });
+          } else if (status.spending.isNearLimit) {
+            alerts.push({
+              type: 'near_limit',
+              severity: 'medium',
+              budgetId: b.id,
+              categoryName: catName,
+              message: message,
+              data: status
+            });
+          }
         }
       } catch (err) {
         console.error(`Failed to check alerts for budget ${b.id}:`, err);
