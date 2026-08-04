@@ -35,11 +35,10 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^14.0.0",
-    "winston": "^3.9.0"
-  },
-  "devDependencies": {
+    "winston": "^3.9.0",
     "prisma": "^5.22.0"
   },
+  "devDependencies": {},
   "prisma": {
     "seed": "node prisma/seed.js"
   }

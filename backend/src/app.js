@@ -20,6 +20,11 @@ app.use(express.urlencoded({ extended: true }));
 // Logging middleware
 app.use(requestLogger);
 
+// Root health route
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Savings Helper API is running" });
+});
+
 // API routes
 app.use("/api", routes);
 

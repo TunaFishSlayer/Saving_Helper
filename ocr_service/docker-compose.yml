@@ -1,0 +1,11 @@
+services:
+  ocr_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: savings_helper_ocr_standalone
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"

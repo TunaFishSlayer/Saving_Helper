@@ -41,6 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def health_check():
+    return {"status": "ok", "service": "Savings Helper OCR Microservice"}
+
 FULL_SYSTEM_PROMPT = """Bạn là AI phân tích hóa đơn chi tiêu cá nhân Việt Nam.
 
 BƯỚC 1 - Nhận diện loại hóa đơn:
