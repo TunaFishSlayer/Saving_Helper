@@ -1,105 +1,166 @@
 # GR1 Savings Helper
 
-Welcome to the **Savings Helper** repository. This project consists of three decoupled layers working seamlessly together:
-1. **OCR Microservice** (Python/FastAPI) - Persistent NLP & Computer Vision analysis.
-2. **Backend API** (Node.js/Express) - Application logic, database interactions, and gateway.
-3. **Frontend Client** (Vite/React) - User Interface.
+Welcome to **Savings Helper** — a full-featured, offline-first financial management application with AI-powered receipt scanning, budget tracking, multi-language support (English & Vietnamese), multi-currency handling (VND & USD), and cloud account synchronization.
 
 ---
 
-## 🚀 Running the Services Separately
+## 🌟 Key Features
 
-To start development, you will need to open **three separate terminal instances** (one for each service) and follow these commands:
-
----
-
-### 1️⃣ Python OCR Microservice (Port 8000)
-This service holds pre-loaded machine learning models (PaddleOCR + VietOCR) in memory to parse and structure uploaded receipts near-instantly.
-
-**Setup & Activation (Windows):**
-```powershell
-# 1. Navigate to the service directory
-cd ocr_service
-
-# 2. Activate the dedicated virtual environment
-.venv\Scripts\activate
-
-# 3. (Optional) To sync new packages if requirements changed:
-uv pip install paddlepaddle paddleocr vietocr groq fastapi uvicorn python-multipart python-dotenv
-```
-
-**Run standalone:**
-```powershell
-python app.py
-```
-> 💡 **Note**: You will see models pre-loading into memory on boot. Once initialized, you can query status at `http://localhost:8000/health`.
+- **Offline-First Architecture & Cloud Sync**: Use full app capabilities in Guest Mode without logging in. When creating an account, seamlessly merge offline IndexedDB (Dexie) records with PostgreSQL cloud storage.
+- **Multi-Language Support (i18n)**: Instant switching between **English (EN)** and **Vietnamese (VI)** across all views including Sign In, Sign Up, Dashboard, Transactions, Budgets, Subscriptions, Goals, and Profile.
+- **Multi-Currency Support**: Format transactions, budgets, and savings goals dynamically in **VND (₫)** or **USD ($)**.
+- **AI Receipt Scanning (OCR)**: Microservice powered by FastAPI and Groq Vision API to parse receipt images into structured transactions automatically.
+- **Financial Analytics & Budget Alerts**: Interactive visual analytics (Recharts), customizable spending alerts with threshold notifications, cost breakdown for recurring subscriptions, and savings goal portfolio tracking.
+- **Cross-Platform (Web & Mobile)**: Runs as a modern Vite/React web application and as an Android WebView app wrapped with Capacitor.
 
 ---
 
-### 2️⃣ Node.js Express Backend (Port 5000)
-Acts as your central database gateway, authentication engine, and proxies OCR image traffic to the Python service.
+## 🏗️ Tech Stack & Architecture
 
-**Setup & Run:**
+- **Frontend**: React 19, Vite, React Router v7, Lucide Icons, Recharts, Dexie.js (IndexedDB).
+- **Backend API**: Node.js, Express.js, Prisma ORM, PostgreSQL database, JWT authentication, Nodemailer (Password Reset).
+- **OCR Microservice**: Python 3.10+, FastAPI, Uvicorn, Pillow, Groq Vision API.
+- **Mobile Platform**: Capacitor 8 (`@capacitor/android`) for Android WebView packaging.
+- **Containerization & Deployment**: Docker, Docker Compose, Nginx reverse proxy, Render Blueprint (`render.yaml`).
+
+---
+
+## 🚀 Running Locally
+
+### Prerequisites
+- Node.js 18+ and `npm`
+- Python 3.10+ (for OCR Service)
+- PostgreSQL database instance (or Docker)
+
+---
+
+### 1️⃣ Express Backend & Database (Port 5000)
+
 ```powershell
-# 1. Navigate to the backend directory
+# Navigate to backend
 cd backend
 
-# 2. Ensure dependencies are installed
-pnpm install
+# Install dependencies
+npm install
 
-# 3. Start the development server (using nodemon)
-pnpm run dev
+# Run database migrations and generate Prisma Client
+npx prisma migrate dev
+
+# Start development server
+npm run dev
 ```
-> 💡 **Gateway Config**: The Node API automatically routes receipt images to the python endpoint on port 8000 via Axios.
 
 ---
 
-### 3️⃣ Vite React Frontend (Port 5173)
-The user interface used to track finances and submit receipt scans.
+### 2️⃣ Vite React Frontend (Port 5173)
 
-**Setup & Run:**
 ```powershell
-# 1. Navigate to the frontend directory
+# Navigate to frontend
 cd frontend
 
-# 2. Ensure dependencies are installed
-pnpm install
+# Install dependencies
+npm install
 
-# 3. Start the React application
-pnpm run dev
+# Start development server
+npm run dev
 ```
 
 ---
 
-## 📊 Architecture Overview & API Communication Flow
+### 3️⃣ Python OCR Microservice (Port 8000)
+
+```powershell
+# Navigate to OCR service
+cd ocr_service
+
+# Activate virtual environment (Windows)
+.venv\Scripts\activate
+
+# Install requirements if needed
+pip install -r requirements.txt
+
+# Run FastAPI service
+python app.py
+```
+> 💡 Query health status at `http://localhost:8000/health`.
+
+---
+
+## 🐳 Running with Docker Compose
+
+Run all services (PostgreSQL, Backend API, OCR Microservice, and Frontend Nginx server) simultaneously:
+
+```powershell
+docker-compose up --build
+```
+
+---
+
+## 📱 Android App (Capacitor)
+
+To build and sync the Android WebView project:
+
+```powershell
+cd frontend
+
+# Build frontend & sync to native Android project
+npm run cap:sync
+
+# Open in Android Studio
+npm run cap:open
+```
+
+---
+
+## 📊 Architecture & Sync Flow
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Client as Vite React (Port 5173)
-    participant Server as Node Backend (Port 5000)
-    participant AI as FastAPI Service (Port 8000)
+    participant Client as Vite React (Dexie LocalDB)
+    participant Server as Node Backend (PostgreSQL)
+    participant AI as FastAPI OCR (Groq Vision)
 
-    User->>Client: Upload receipt picture
-    Client->>Server: POST /api/transactions/scan-receipt (FormData)
-    Server->>AI: POST /parse-receipt (File stream)
-    Note over AI: Pre-cached VietOCR models<br/>instantly extract & analyze
-    AI-->>Server: Return structured JSON response
-    Server-->>Client: Normalize transaction format
-    Client->>User: Populate Transaction Form
+    alt Offline / Guest Mode
+        User->>Client: Create Transaction / Budget / Goal
+        Client->>Client: Persist locally in IndexedDB (Dexie)
+    else Online Account Sync
+        User->>Client: Login / Register
+        Client->>Server: POST /api/sync (Batch records with Client UUIDs)
+        Server->>Server: Validate & Upsert to PostgreSQL
+        Server-->>Client: Sync Confirmation & Cloud Pull
+    else AI Receipt Scan
+        User->>Client: Upload Receipt Image
+        Client->>Server: POST /api/transactions/scan-receipt
+        Server->>AI: POST /parse-receipt (Groq Vision)
+        AI-->>Server: Structured JSON (Merchant, Date, Total Amount)
+        Server-->>Client: Formatted Receipt Data
+    end
 ```
 
-## 🛠️ Configuration Variables (.env files)
-Ensure your local environments have the following settings:
+---
 
-* **`ocr_service/.env`**:
-  ```env
-  PORT=8000
-  GROQ_API_KEY=your_gsk_key_here
-  ```
-* **`backend/.env`**:
-  ```env
-  PORT=5000
-  DATABASE_URL=file:./prisma/dev.db
-  GROQ_API_KEY=your_gsk_key_here
-  ```
+## 🛠️ Environment Variables (.env Specifications)
+
+### `backend/.env`
+```env
+PORT=5000
+DATABASE_URL=postgresql://postgres:password@localhost:5432/savings_helper
+JWT_SECRET=your_super_secret_jwt_key
+GROQ_API_KEY=your_groq_api_key_here
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_email_app_password
+```
+
+### `ocr_service/.env`
+```env
+PORT=8000
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+---
+
+## 📄 License
+This project is developed as part of the GR1 Savings Helper Capstone Project.
