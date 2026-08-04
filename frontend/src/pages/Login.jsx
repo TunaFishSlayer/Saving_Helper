@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, ArrowLeft, KeyRound, Mail } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, ArrowLeft, KeyRound, Mail, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import authService from '../services/authService';
 import { localDb } from '../services/localDb';
 import syncService from '../services/syncService';
@@ -12,6 +13,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginGuest } = useAuth();
+  const { locale, toggleLanguage, t } = useLanguage();
   
   const fromGoOnline = location.state?.fromGoOnline;
   
@@ -87,7 +89,7 @@ const Login = () => {
         navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || t('authFailed'));
     } finally {
       setLoading(false);
     }
@@ -102,7 +104,7 @@ const Login = () => {
       setShowMergePrompt(false);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Failed to merge local data');
+      setError(err.message || t('failedMergeData'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,7 @@ const Login = () => {
       setShowMergePrompt(false);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Failed to sync cloud data');
+      setError(err.message || t('failedSyncCloud'));
     } finally {
       setLoading(false);
     }
@@ -131,10 +133,10 @@ const Login = () => {
     setLoading(true);
     try {
       await authService.requestResetPassword(formData.email);
-      setSuccess(`Reset code sent to ${formData.email}`);
+      setSuccess(`${t('resetCodeSentTo')} ${formData.email}`);
       setMode('reset'); // Move to step 2
     } catch (err) {
-      setError(err.message || 'Failed to send reset code');
+      setError(err.message || t('failedSendCode'));
     } finally {
       setLoading(false);
     }
@@ -147,12 +149,12 @@ const Login = () => {
     setLoading(true);
     try {
       await authService.resetPassword(formData.email, formData.code, formData.newPassword);
-      setSuccess('Password reset successful! Please login.');
+      setSuccess(t('resetSuccessMsg'));
       setTimeout(() => {
         resetState('login'); // Redirect to login after 2s
       }, 2000);
     } catch (err) {
-      setError(err.message || 'Failed to reset password');
+      setError(err.message || t('failedResetPassword'));
     } finally {
       setLoading(false);
     }
@@ -160,20 +162,47 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      {/* Language Switcher Pill */}
+      <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', zIndex: 10 }}>
+        <button
+          type="button"
+          onClick={() => toggleLanguage(locale === 'vi' ? 'en' : 'vi')}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
+            borderRadius: '24px',
+            padding: '8px 16px',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: '#1e293b',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            backdropFilter: 'blur(8px)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Globe size={18} style={{ color: 'var(--primary)' }} />
+          <span>{locale === 'vi' ? 'Tiếng Việt' : 'English'}</span>
+        </button>
+      </div>
+
       <div className="login-card">
         <div className="login-header">
           {/* Use your logo class here */}
           <img src="/logo.png" alt="Logo" className="login-logo" />
           
           <h1 className="login-title">
-            {mode === 'forgot' ? 'Reset Password' : 
-             mode === 'reset' ? 'New Password' : 
-             'Savings Helper'}
+            {mode === 'forgot' ? t('resetPasswordTitle') : 
+             mode === 'reset' ? t('newPasswordTitle') : 
+             t('loginTitle')}
           </h1>
           <p className="login-subtitle">
-            {mode === 'forgot' ? 'Enter your email to receive a code' : 
-             mode === 'reset' ? 'Enter the code and your new password' : 
-             'Manage your finances with ease'}
+            {mode === 'forgot' ? t('resetPasswordSubtitle') : 
+             mode === 'reset' ? t('newPasswordSubtitle') : 
+             t('loginSubtitle')}
           </p>
         </div>
 
@@ -185,14 +214,14 @@ const Login = () => {
               className={`tab-button ${mode === 'login' ? 'active' : ''}`}
               onClick={() => resetState('login')}
             >
-              Login
+              {t('tabLogin')}
             </button>
             <button
               type="button"
               className={`tab-button ${mode === 'register' ? 'active' : ''}`}
               onClick={() => resetState('register')}
             >
-              Register
+              {t('tabRegister')}
             </button>
           </div>
         )}
@@ -217,7 +246,7 @@ const Login = () => {
               <input
                 type="text"
                 name="name"
-                placeholder="Full Name"
+                placeholder={t('fullNamePlaceholder')}
                 value={formData.name}
                 onChange={handleChange}
                 className="input"
@@ -228,7 +257,7 @@ const Login = () => {
             <input
               type="email"
               name="email"
-              placeholder="Email"
+              placeholder={t('emailPlaceholder')}
               value={formData.email}
               onChange={handleChange}
               className="input"
@@ -239,7 +268,7 @@ const Login = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
-                placeholder="Password"
+                placeholder={t('passwordPlaceholder')}
                 value={formData.password}
                 onChange={handleChange}
                 className="input"
@@ -266,20 +295,20 @@ const Login = () => {
                     setMode('forgot');
                   }}
                 >
-                  Forgot Password?
+                  {t('forgotPasswordLink')}
                 </button>
               </div>
             )}
 
             <button type="submit" className="button button-primary" disabled={loading}>
-              {loading ? 'Please wait...' : (mode === 'login' ? 'Login' : 'Register')}
+              {loading ? t('pleaseWait') : (mode === 'login' ? t('loginBtn') : t('registerBtn'))}
             </button>
 
             {!fromGoOnline && (
               <>
                 <div className="offline-divider" style={{margin: '1.5rem 0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
                   <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
-                  <span style={{fontSize: '0.85rem', color: '#94a3b8'}}>or</span>
+                  <span style={{fontSize: '0.85rem', color: '#94a3b8'}}>{t('orDivider')}</span>
                   <span style={{height: '1px', flex: 1, backgroundColor: '#e2e8f0'}}></span>
                 </div>
 
@@ -292,7 +321,7 @@ const Login = () => {
                     navigate('/');
                   }}
                 >
-                  Use Offline (Guest Mode)
+                  {t('useOfflineGuest')}
                 </button>
               </>
             )}
@@ -306,7 +335,7 @@ const Login = () => {
               <input
                 type="email"
                 name="email"
-                placeholder="Enter your email"
+                placeholder={t('enterEmailPlaceholder')}
                 value={formData.email}
                 onChange={handleChange}
                 className="input"
@@ -316,7 +345,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="button button-primary" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Code'}
+              {loading ? t('sendingCode') : t('sendResetCode')}
             </button>
             
             <button 
@@ -325,7 +354,7 @@ const Login = () => {
               style={{marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}
               onClick={() => resetState('login')}
             >
-              <ArrowLeft size={16} /> Back to Login
+              <ArrowLeft size={16} /> {t('backToLogin')}
             </button>
           </form>
         )}
@@ -337,7 +366,7 @@ const Login = () => {
               <input
                 type="text"
                 name="code"
-                placeholder="6-Digit Verification Code"
+                placeholder={t('verificationCodePlaceholder')}
                 value={formData.code}
                 onChange={handleChange}
                 className="input"
@@ -351,7 +380,7 @@ const Login = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="newPassword"
-                placeholder="New Password"
+                placeholder={t('newPasswordPlaceholder')}
                 value={formData.newPassword}
                 onChange={handleChange}
                 className="input"
@@ -368,7 +397,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="button button-primary" disabled={loading}>
-              {loading ? 'Resetting...' : 'Set New Password'}
+              {loading ? t('resettingPassword') : t('setNewPassword')}
             </button>
 
             <button 
@@ -377,7 +406,7 @@ const Login = () => {
               style={{marginTop: '10px'}}
               onClick={() => setMode('forgot')}
             >
-              Resend Code / Change Email
+              {t('resendCodeLink')}
             </button>
           </form>
         )}
@@ -394,10 +423,10 @@ const Login = () => {
             maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
           }}>
             <h2 style={{fontSize: '1.4rem', fontWeight: 600, color: '#1e293b', marginBottom: '1rem'}}>
-              Local Data Found
+              {t('localDataFoundTitle')}
             </h2>
             <p style={{fontSize: '0.95rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: '1.5'}}>
-              We found transaction records created while using offline guest mode on this device. How would you like to proceed?
+              {t('localDataFoundDesc')}
             </p>
             
             <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
@@ -407,7 +436,7 @@ const Login = () => {
                 onClick={handleMergeData}
                 disabled={loading}
               >
-                Merge records into my online account
+                {t('mergeRecordsBtn')}
               </button>
               
               <button
@@ -417,7 +446,7 @@ const Login = () => {
                 onClick={handleDiscardLocalData}
                 disabled={loading}
               >
-                Discard local data and use cloud records
+                {t('discardLocalBtn')}
               </button>
             </div>
           </div>
@@ -427,4 +456,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Login;

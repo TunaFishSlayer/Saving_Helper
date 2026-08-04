@@ -240,8 +240,52 @@ export const translations = {
     passwordUpdatedError: "Failed to update password",
     deleteAccountError: "Failed to delete account",
     confirmDeleteAccountText: "Are you sure you want to delete your account? This action cannot be undone.",
-    confirmDeleteAccountText2: "This will permanently delete all your data. Are you absolutely sure?"
+    confirmDeleteAccountText2: "This will permanently delete all your data. Are you absolutely sure?",
+
+    // ── Sign In / Sign Up (Auth) ──────────────────────────────────────────
+    loginTitle: "Savings Helper",
+    loginSubtitle: "Manage your finances with ease",
+    tabLogin: "Login",
+    tabRegister: "Register",
+    fullNamePlaceholder: "Full Name",
+    emailPlaceholder: "Email",
+    passwordPlaceholder: "Password",
+    forgotPasswordLink: "Forgot Password?",
+    loginBtn: "Login",
+    registerBtn: "Register",
+    pleaseWait: "Please wait...",
+    orDivider: "or",
+    useOfflineGuest: "Use Offline (Guest Mode)",
+
+    resetPasswordTitle: "Reset Password",
+    resetPasswordSubtitle: "Enter your email to receive a code",
+    enterEmailPlaceholder: "Enter your email",
+    sendResetCode: "Send Reset Code",
+    sendingCode: "Sending...",
+    backToLogin: "Back to Login",
+
+    newPasswordTitle: "New Password",
+    newPasswordSubtitle: "Enter the code and your new password",
+    verificationCodePlaceholder: "6-Digit Verification Code",
+    newPasswordPlaceholder: "New Password",
+    setNewPassword: "Set New Password",
+    resettingPassword: "Resetting...",
+    resendCodeLink: "Resend Code / Change Email",
+
+    localDataFoundTitle: "Local Data Found",
+    localDataFoundDesc: "We found transaction records created while using offline guest mode on this device. How would you like to proceed?",
+    mergeRecordsBtn: "Merge records into my online account",
+    discardLocalBtn: "Discard local data and use cloud records",
+
+    resetCodeSentTo: "Reset code sent to",
+    resetSuccessMsg: "Password reset successful! Please login.",
+    authFailed: "Authentication failed",
+    failedMergeData: "Failed to merge local data",
+    failedSyncCloud: "Failed to sync cloud data",
+    failedSendCode: "Failed to send reset code",
+    failedResetPassword: "Failed to reset password"
   },
+
 
 
   vi: {
@@ -484,6 +528,50 @@ export const translations = {
     passwordUpdatedError: "Cập nhật mật khẩu thất bại",
     deleteAccountError: "Xóa tài khoản thất bại",
     confirmDeleteAccountText: "Bạn có chắc chắn muốn xóa tài khoản của mình không? Hành động này không thể hoàn tác.",
-    confirmDeleteAccountText2: "Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn. Bạn có hoàn toàn chắc chắn không?"
+    confirmDeleteAccountText2: "Hành động này sẽ xóa vĩnh viễn toàn bộ dữ liệu của bạn. Bạn có hoàn toàn chắc chắn không?",
+
+    // ── Sign In / Sign Up (Auth) ──────────────────────────────────────────
+    loginTitle: "Savings Helper",
+    loginSubtitle: "Quản lý tài chính dễ dàng",
+    tabLogin: "Đăng Nhập",
+    tabRegister: "Đăng Ký",
+    fullNamePlaceholder: "Họ và tên",
+    emailPlaceholder: "Email",
+    passwordPlaceholder: "Mật khẩu",
+    forgotPasswordLink: "Quên Mật Khẩu?",
+    loginBtn: "Đăng Nhập",
+    registerBtn: "Đăng Ký",
+    pleaseWait: "Vui lòng chờ...",
+    orDivider: "hoặc",
+    useOfflineGuest: "Dùng Ngoại Tuyến (Chế độ Khách)",
+
+    resetPasswordTitle: "Đặt Lại Mật Khẩu",
+    resetPasswordSubtitle: "Nhập email của bạn để nhận mã xác nhận",
+    enterEmailPlaceholder: "Nhập email của bạn",
+    sendResetCode: "Gửi Mã Xác Nhận",
+    sendingCode: "Đang gửi...",
+    backToLogin: "Quay lại Đăng Nhập",
+
+    newPasswordTitle: "Mật Khẩu Mới",
+    newPasswordSubtitle: "Nhập mã xác nhận và mật khẩu mới",
+    verificationCodePlaceholder: "Mã xác nhận 6 chữ số",
+    newPasswordPlaceholder: "Mật khẩu mới",
+    setNewPassword: "Đặt Mật Khẩu Mới",
+    resettingPassword: "Đang đặt lại...",
+    resendCodeLink: "Gửi lại mã / Đổi Email",
+
+    localDataFoundTitle: "Phát Hiện Dữ Liệu Cục Bộ",
+    localDataFoundDesc: "Tìm thấy các bản ghi giao dịch được tạo trong chế độ khách ngoại tuyến trên thiết bị này. Bạn muốn tiếp tục như thế nào?",
+    mergeRecordsBtn: "Hợp nhất dữ liệu vào tài khoản trực tuyến",
+    discardLocalBtn: "Xóa dữ liệu cục bộ và dùng dữ liệu đám mây",
+
+    resetCodeSentTo: "Đã gửi mã xác nhận đến",
+    resetSuccessMsg: "Đặt lại mật khẩu thành công! Vui lòng đăng nhập.",
+    authFailed: "Đăng nhập/Đăng ký thất bại",
+    failedMergeData: "Không thể hợp nhất dữ liệu cục bộ",
+    failedSyncCloud: "Không thể đồng bộ dữ liệu đám mây",
+    failedSendCode: "Không thể gửi mã xác nhận",
+    failedResetPassword: "Không thể đặt lại mật khẩu"
   }
 };
+
