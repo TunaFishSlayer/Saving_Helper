@@ -21,26 +21,31 @@ localDb.version(3).stores({
   appMeta: 'key'
 });
 
+// Version 4: systemCode index for category canonical i18n keys
+localDb.version(4).stores({
+  categories: 'clientUuid, id, name, systemCode, userId'
+});
+
 // ─── Default Category Seed Data ──────────────────────────────────────────────
 const DEFAULT_CATEGORIES = [
   // ── Chi tiêu (Expense) ─────────────────────────────────────────────────────
-  { name: 'Ăn uống',          type: 'expense', description: 'Nhà hàng, quán ăn, đồ ăn nhanh' },
-  { name: 'Siêu thị',         type: 'expense', description: 'Mua sắm tại siêu thị, tạp hóa' },
-  { name: 'Di chuyển',        type: 'expense', description: 'Grab, taxi, xăng xe, gửi xe' },
-  { name: 'Hóa đơn & Tiện ích', type: 'expense', description: 'Điện, nước, internet, điện thoại' },
-  { name: 'Mua sắm',          type: 'expense', description: 'Quần áo, giày dép, đồ dùng cá nhân' },
-  { name: 'Sức khỏe',         type: 'expense', description: 'Thuốc, bệnh viện, phòng khám' },
-  { name: 'Giải trí',         type: 'expense', description: 'Phim, karaoke, sự kiện, game' },
-  { name: 'Giáo dục',         type: 'expense', description: 'Học phí, sách, khóa học' },
-  { name: 'Nhà ở',            type: 'expense', description: 'Tiền thuê nhà, sửa chữa' },
-  { name: 'Chi tiêu khác',    type: 'expense', description: 'Các chi tiêu chưa phân loại' },
+  { name: 'Ăn uống',          systemCode: 'FOOD_DINING',    type: 'expense', description: 'Nhà hàng, quán ăn, đồ ăn nhanh' },
+  { name: 'Siêu thị',         systemCode: 'GROCERIES',      type: 'expense', description: 'Mua sắm tại siêu thị, tạp hóa' },
+  { name: 'Di chuyển',        systemCode: 'TRANSPORTATION', type: 'expense', description: 'Grab, taxi, xăng xe, gửi xe' },
+  { name: 'Hóa đơn & Tiện ích', systemCode: 'UTILITIES',     type: 'expense', description: 'Điện, nước, internet, điện thoại' },
+  { name: 'Mua sắm',          systemCode: 'SHOPPING',      type: 'expense', description: 'Quần áo, giày dép, đồ dùng cá nhân' },
+  { name: 'Sức khỏe',         systemCode: 'HEALTH',        type: 'expense', description: 'Thuốc, bệnh viện, phòng khám' },
+  { name: 'Giải trí',         systemCode: 'ENTERTAINMENT', type: 'expense', description: 'Phim, karaoke, sự kiện, game' },
+  { name: 'Giáo dục',         systemCode: 'EDUCATION',     type: 'expense', description: 'Học phí, sách, khóa học' },
+  { name: 'Nhà ở',            systemCode: 'HOUSING',       type: 'expense', description: 'Tiền thuê nhà, sửa chữa' },
+  { name: 'Chi tiêu khác',    systemCode: 'OTHER_EXPENSE', type: 'expense', description: 'Các chi tiêu chưa phân loại' },
 
   // ── Thu nhập (Income) ──────────────────────────────────────────────────────
-  { name: 'Lương',            type: 'income',  description: 'Lương hàng tháng, thưởng' },
-  { name: 'Làm thêm',         type: 'income',  description: 'Freelance, part-time, việc phụ' },
-  { name: 'Đầu tư',           type: 'income',  description: 'Cổ phiếu, tiền gửi, tiền lãi' },
-  { name: 'Kinh doanh',       type: 'income',  description: 'Thu nhập từ kinh doanh cá nhân' },
-  { name: 'Thu nhập khác',    type: 'income',  description: 'Quà, tiền hỗ trợ, các khoản khác' },
+  { name: 'Lương',            systemCode: 'SALARY',        type: 'income',  description: 'Lương hàng tháng, thưởng' },
+  { name: 'Làm thêm',         systemCode: 'SIDE_HUSTLE',   type: 'income',  description: 'Freelance, part-time, việc phụ' },
+  { name: 'Đầu tư',           systemCode: 'INVESTMENT',    type: 'income',  description: 'Cổ phiếu, tiền gửi, tiền lãi' },
+  { name: 'Kinh doanh',       systemCode: 'BUSINESS',      type: 'income',  description: 'Thu nhập từ kinh doanh cá nhân' },
+  { name: 'Thu nhập khác',    systemCode: 'OTHER_INCOME',   type: 'income',  description: 'Quà, tiền hỗ trợ, các khoản khác' },
 ];
 
 // ─── Seed function (idempotent) ───────────────────────────────────────────────

@@ -29,7 +29,7 @@ export const syncData = async (req, res) => {
           const sanitizedData = { userId };
           
           if (entityType === "category") {
-            const allowed = ["clientUuid", "name", "type", "description", "createdAt"];
+            const allowed = ["clientUuid", "name", "systemCode", "type", "description", "createdAt"];
             allowed.forEach(k => { if (payload[k] !== undefined) sanitizedData[k] = payload[k]; });
           } else if (entityType === "transaction") {
             const allowed = ["clientUuid", "amount", "description", "type", "date", "createdAt", "categoryId"];
@@ -61,13 +61,22 @@ export const syncData = async (req, res) => {
               let existing = await tx.category.findUnique({ where: { clientUuid } });
               
               if (!existing) {
-                // Check if a category with the same name already exists for this user
-                existing = await tx.category.findFirst({
-                  where: { userId, name: data.name }
-                });
+                // Tier 2: Check if category with same systemCode exists
+                if (data.systemCode) {
+                  existing = await tx.category.findFirst({
+                    where: { userId, systemCode: data.systemCode }
+                  });
+                }
+                
+                // Tier 3: Check if category with same name exists
+                if (!existing && data.name) {
+                  existing = await tx.category.findFirst({
+                    where: { userId, name: data.name }
+                  });
+                }
                 
                 if (existing) {
-                  // Link the existing category with the incoming clientUuid
+                  // Link existing category with incoming clientUuid
                   existing = await tx.category.update({
                     where: { id: existing.id },
                     data: { clientUuid }

@@ -32,13 +32,13 @@ async function main() {
 
   // 3. Create default categories
   const categoriesData = [
-    { name: "Food & Dining", type: "expense", description: "Restaurants, cafes, groceries" },
-    { name: "Housing", type: "expense", description: "Rent, bills, home utilities" },
-    { name: "Transportation", type: "expense", description: "Gas, public transit, grab" },
-    { name: "Entertainment", type: "expense", description: "Movies, games, subscriptions" },
-    { name: "Shopping", type: "expense", description: "Clothing, personal purchases" },
-    { name: "Salary", type: "income", description: "Monthly employment income" },
-    { name: "Freelance", type: "income", description: "Side gigs and custom work" }
+    { name: "Food & Dining", systemCode: "FOOD_DINING", type: "expense", description: "Restaurants, cafes, groceries" },
+    { name: "Housing", systemCode: "HOUSING", type: "expense", description: "Rent, bills, home utilities" },
+    { name: "Transportation", systemCode: "TRANSPORTATION", type: "expense", description: "Gas, public transit, grab" },
+    { name: "Entertainment", systemCode: "ENTERTAINMENT", type: "expense", description: "Movies, games, subscriptions" },
+    { name: "Shopping", systemCode: "SHOPPING", type: "expense", description: "Clothing, personal purchases" },
+    { name: "Salary", systemCode: "SALARY", type: "income", description: "Monthly employment income" },
+    { name: "Freelance", systemCode: "SIDE_HUSTLE", type: "income", description: "Side gigs and custom work" }
   ];
 
   const categories = {};

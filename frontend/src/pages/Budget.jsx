@@ -6,6 +6,7 @@ import categoryService from '../services/categoryService';
 import FormattedAmountInput from '../components/FormattedAmountInput';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { getCategoryDisplayName } from '../utils/categoryUtils';
 
 const Budget = () => {
   const { t } = useLanguage();
@@ -172,7 +173,7 @@ const Budget = () => {
             <div key={item.budget.clientUuid} className="budget-card">
               <div className="budget-header">
                 <div>
-                  <h3 className="budget-category">{item.budget.categoryName}</h3>
+                  <h3 className="budget-category">{getCategoryDisplayName(item.budget.category || { name: item.budget.categoryName }, t)}</h3>
                   <p className="budget-period">
                     {/* Display formatted date range from the calculated period */}
                     {new Date(item.period.start).toLocaleDateString()} - {new Date(item.period.end).toLocaleDateString()}
@@ -255,7 +256,7 @@ const Budget = () => {
                   <option value="">{t('formSelectCategory')}</option>
                   {categories.map((cat) => (
                     <option key={cat.clientUuid} value={cat.clientUuid}>
-                      {cat.name}
+                      {getCategoryDisplayName(cat, t)}
                     </option>
                   ))}
 

@@ -283,7 +283,26 @@ export const translations = {
     failedMergeData: "Failed to merge local data",
     failedSyncCloud: "Failed to sync cloud data",
     failedSendCode: "Failed to send reset code",
-    failedResetPassword: "Failed to reset password"
+    failedResetPassword: "Failed to reset password",
+
+    // System Category Translations
+    categoryNames: {
+      FOOD_DINING: "Food & Dining",
+      GROCERIES: "Groceries",
+      TRANSPORTATION: "Transportation",
+      UTILITIES: "Utilities",
+      SHOPPING: "Shopping",
+      HEALTH: "Health & Medical",
+      ENTERTAINMENT: "Entertainment",
+      EDUCATION: "Education",
+      HOUSING: "Housing",
+      OTHER_EXPENSE: "Other Expense",
+      SALARY: "Salary",
+      SIDE_HUSTLE: "Side Hustle",
+      INVESTMENT: "Investments",
+      BUSINESS: "Business",
+      OTHER_INCOME: "Other Income"
+    }
   },
 
 
@@ -571,7 +590,26 @@ export const translations = {
     failedMergeData: "Không thể hợp nhất dữ liệu cục bộ",
     failedSyncCloud: "Không thể đồng bộ dữ liệu đám mây",
     failedSendCode: "Không thể gửi mã xác nhận",
-    failedResetPassword: "Không thể đặt lại mật khẩu"
+    failedResetPassword: "Không thể đặt lại mật khẩu",
+
+    // System Category Translations
+    categoryNames: {
+      FOOD_DINING: "Ăn uống",
+      GROCERIES: "Siêu thị",
+      TRANSPORTATION: "Di chuyển",
+      UTILITIES: "Hóa đơn & Tiện ích",
+      SHOPPING: "Mua sắm",
+      HEALTH: "Sức khỏe",
+      ENTERTAINMENT: "Giải trí",
+      EDUCATION: "Giáo dục",
+      HOUSING: "Nhà ở",
+      OTHER_EXPENSE: "Chi tiêu khác",
+      SALARY: "Lương",
+      SIDE_HUSTLE: "Làm thêm",
+      INVESTMENT: "Đầu tư",
+      BUSINESS: "Kinh doanh",
+      OTHER_INCOME: "Thu nhập khác"
+    }
   }
 };
 

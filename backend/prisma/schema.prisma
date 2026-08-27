@@ -30,6 +30,7 @@ model Category {
   id          String   @id @default(uuid())
   clientUuid  String?  @unique
   name        String
+  systemCode  String?
   type        String
   description String?
   userId      String

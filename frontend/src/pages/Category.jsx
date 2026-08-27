@@ -4,6 +4,7 @@ import { Plus, X, FolderOpen, Edit2 } from 'lucide-react';
 import categoryService from '../services/categoryService';
 import { CATEGORY_TYPES } from '../utils/constants';
 import { useLanguage } from '../context/LanguageContext';
+import { getCategoryDisplayName } from '../utils/categoryUtils';
   
 const Category = () => {
   const { t, locale } = useLanguage();
@@ -16,33 +17,32 @@ const Category = () => {
     try {
       // Get current categories to prevent duplicates
       const currentCats = await categoryService.getCategories();
+      const currentSystemCodes = new Set(currentCats.map(c => c.systemCode).filter(Boolean));
       const currentNames = new Set(currentCats.map(c => c.name.toLowerCase().trim()));
 
-      const defaultCategories = locale === 'vi' ? [
-        { name: "Ăn uống", type: "expense", description: "Ăn uống, siêu thị, nhà hàng" },
-        { name: "Nhà cửa", type: "expense", description: "Tiền thuê nhà, bảo trì, sửa chữa" },
-        { name: "Di chuyển", type: "expense", description: "Xăng xe, xe ôm, phương tiện công cộng" },
-        { name: "Hóa đơn & Tiện ích", type: "expense", description: "Điện, nước, internet, điện thoại" },
-        { name: "Giải trí", type: "expense", description: "Xem phim, ca nhạc, du lịch" },
-        { name: "Mua sắm", type: "expense", description: "Quần áo, giày dép, thiết bị" },
-        { name: "Lương", type: "income", description: "Thu nhập chính từ công việc" },
-        { name: "Thu nhập phụ", type: "income", description: "Làm thêm, freelance, đầu tư" },
-        { name: "Quà tặng & Thưởng", type: "income", description: "Quà tặng, tiền thưởng, lì xì" }
-      ] : [
-        { name: "Food & Dining", type: "expense", description: "Groceries, restaurants, fast food" },
-        { name: "Housing", type: "expense", description: "Rent, mortgage, home maintenance" },
-        { name: "Transportation", type: "expense", description: "Gas, public transit, car maintenance" },
-        { name: "Utilities", type: "expense", description: "Electricity, water, internet, phone" },
-        { name: "Entertainment", type: "expense", description: "Movies, games, subscriptions" },
-        { name: "Shopping", type: "expense", description: "Clothing, electronics, personal items" },
-        { name: "Salary", type: "income", description: "Primary job income" },
-        { name: "Side Hustle", type: "income", description: "Freelance or part-time work" },
-        { name: "Gifts", type: "income", description: "Gifts and bonuses" }
+      const defaultCategories = [
+        { name: "Ăn uống", systemCode: "FOOD_DINING", type: "expense", description: "Ăn uống, siêu thị, nhà hàng" },
+        { name: "Siêu thị", systemCode: "GROCERIES", type: "expense", description: "Mua sắm tại siêu thị, tạp hóa" },
+        { name: "Nhà ở", systemCode: "HOUSING", type: "expense", description: "Tiền thuê nhà, bảo trì, sửa chữa" },
+        { name: "Di chuyển", systemCode: "TRANSPORTATION", type: "expense", description: "Xăng xe, xe ôm, phương tiện công cộng" },
+        { name: "Hóa đơn & Tiện ích", systemCode: "UTILITIES", type: "expense", description: "Điện, nước, internet, điện thoại" },
+        { name: "Giải trí", systemCode: "ENTERTAINMENT", type: "expense", description: "Xem phim, ca nhạc, du lịch" },
+        { name: "Mua sắm", systemCode: "SHOPPING", type: "expense", description: "Quần áo, giày dép, thiết bị" },
+        { name: "Sức khỏe", systemCode: "HEALTH", type: "expense", description: "Thuốc, bệnh viện, phòng khám" },
+        { name: "Giáo dục", systemCode: "EDUCATION", type: "expense", description: "Học phí, sách, khóa học" },
+        { name: "Chi tiêu khác", systemCode: "OTHER_EXPENSE", type: "expense", description: "Các chi tiêu chưa phân loại" },
+        { name: "Lương", systemCode: "SALARY", type: "income", description: "Thu nhập chính từ công việc" },
+        { name: "Làm thêm", systemCode: "SIDE_HUSTLE", type: "income", description: "Freelance, part-time, việc phụ" },
+        { name: "Đầu tư", systemCode: "INVESTMENT", type: "income", description: "Cổ phiếu, tiền gửi, tiền lãi" },
+        { name: "Kinh doanh", systemCode: "BUSINESS", type: "income", description: "Thu nhập từ kinh doanh cá nhân" },
+        { name: "Thu nhập khác", systemCode: "OTHER_INCOME", type: "income", description: "Quà tặng, tiền thưởng, lì xì" }
       ];
 
       let seededCount = 0;
       for (const cat of defaultCategories) {
-        if (!currentNames.has(cat.name.toLowerCase().trim())) {
+        const hasCode = cat.systemCode && currentSystemCodes.has(cat.systemCode);
+        const hasName = currentNames.has(cat.name.toLowerCase().trim());
+        if (!hasCode && !hasName) {
           await categoryService.createCategory(cat);
           seededCount++;
         }
@@ -239,7 +239,7 @@ const Category = () => {
                   </button>
                 </div>
               </div>
-              <h3 className="category-name">{category.name}</h3>
+              <h3 className="category-name">{getCategoryDisplayName(category, t)}</h3>
               <span className={`category-badge category-${category.type}`}>
                 {category.type === 'income' ? t('filterIncome') : t('filterExpense')}
               </span>

@@ -147,6 +147,7 @@ class BudgetService {
         id: budget.id,
         categoryId: budget.categoryId,
         categoryName: cat?.name || 'Unknown',
+        category: cat || null,
         amount: budget.amount,
         period: budget.period,
         alertThreshold: budget.alertThreshold || 80,

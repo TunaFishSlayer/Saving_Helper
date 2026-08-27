@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import FormattedAmountInput from '../components/FormattedAmountInput';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { getCategoryDisplayName } from '../utils/categoryUtils';
 
 const Transaction = () => {
   const { t } = useLanguage();
@@ -361,7 +362,7 @@ const Transaction = () => {
 
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.clientUuid === categoryId || cat.id === categoryId);
-    return category?.name || 'Unknown';
+    return getCategoryDisplayName(category, t) || 'Unknown';
   };
 
 
@@ -643,7 +644,7 @@ const Transaction = () => {
                   <option value="">{t('formSelectCategory')}</option>
                   {availableCategories.map((cat) => (
                     <option key={cat.clientUuid} value={cat.clientUuid}>
-                      {cat.name}
+                      {getCategoryDisplayName(cat, t)}
                     </option>
                   ))}
 
