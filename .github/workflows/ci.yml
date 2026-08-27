@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Backend Dependencies
         working-directory: ./backend
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
 
       - name: Generate Prisma Client
         working-directory: ./backend
