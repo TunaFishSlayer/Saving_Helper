@@ -1,0 +1,38 @@
+name: CI - Run Unit Tests
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  backend-tests:
+    name: Run Backend Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: pnpm install
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Run Vitest Unit Tests
+        working-directory: ./backend
+        run: pnpm test
